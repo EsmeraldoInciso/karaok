@@ -165,18 +165,20 @@ async function onPlayerError(event) {
   // Auto-skip unplayable videos (embedding disabled, removed, etc.)
   if (currentSong) {
     console.warn(`Skipping unplayable video: ${currentSong.title}`);
-    await updateQueueItemStatus(currentSessionCode, currentSong.id, "skipped");
+    const songId = currentSong.id;
     currentSong = null;
     isPlaying = false;
+    await updateQueueItemStatus(currentSessionCode, songId, "skipped");
     playNextIfIdle();
   }
 }
 
 async function markCurrentAsPlayed() {
   if (currentSong) {
-    await updateQueueItemStatus(currentSessionCode, currentSong.id, "played");
+    const songId = currentSong.id;
     currentSong = null;
     isPlaying = false;
+    await updateQueueItemStatus(currentSessionCode, songId, "played");
     playNextIfIdle();
   }
 }
@@ -208,10 +210,11 @@ async function playNextIfIdle() {
 
 async function skipCurrentSong() {
   if (currentSong) {
-    await updateQueueItemStatus(currentSessionCode, currentSong.id, "skipped");
+    const songId = currentSong.id;
     currentSong = null;
     isPlaying = false;
     stopVideo();
+    await updateQueueItemStatus(currentSessionCode, songId, "skipped");
     playNextIfIdle();
   }
 }
