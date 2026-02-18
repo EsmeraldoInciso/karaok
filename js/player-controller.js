@@ -36,6 +36,18 @@ function initPlayerController(sessionCode, domElements) {
   unsubscribeQueue = onQueueChanged(sessionCode, (songs) => {
     queue = songs;
     renderQueue();
+
+    // Detect if current song was skipped remotely (no longer in playing/queued list)
+    if (currentSong && isPlaying) {
+      const stillActive = songs.some((s) => s.id === currentSong.id);
+      if (!stillActive) {
+        console.log("Current song skipped remotely, advancing...");
+        currentSong = null;
+        isPlaying = false;
+        stopVideo();
+      }
+    }
+
     playNextIfIdle();
   });
 
@@ -149,11 +161,11 @@ function updatePlayPauseIcon(state) {
   }
 }
 
-function onPlayerError(event) {
+async function onPlayerError(event) {
   // Auto-skip unplayable videos (embedding disabled, removed, etc.)
   if (currentSong) {
     console.warn(`Skipping unplayable video: ${currentSong.title}`);
-    updateQueueItemStatus(currentSessionCode, currentSong.id, "skipped");
+    await updateQueueItemStatus(currentSessionCode, currentSong.id, "skipped");
     currentSong = null;
     isPlaying = false;
     playNextIfIdle();
