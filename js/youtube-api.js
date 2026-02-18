@@ -188,10 +188,12 @@ function initYouTubePlayer(elementId, onStateChange, onError) {
         width: "100%",
         playerVars: {
           autoplay: 1,
-          controls: 1,
+          controls: 0,  // Hide YouTube controls (we have our own overlay)
           rel: 0,
           modestbranding: 1,
-          fs: 0  // Disable native fullscreen (we use our own so overlay works)
+          fs: 0,         // Disable native fullscreen (we use our own)
+          iv_load_policy: 3,  // Hide annotations
+          disablekb: 0   // Keep keyboard shortcuts (space = play/pause)
         },
         events: {
           onReady: () => resolve(player),
@@ -233,6 +235,17 @@ async function stopVideo() {
   }
 }
 
+function togglePlayPause() {
+  if (!player) return;
+  const state = player.getPlayerState();
+  // 1 = playing, 2 = paused
+  if (state === 1) {
+    player.pauseVideo();
+  } else {
+    player.playVideo();
+  }
+}
+
 function getPlayerState() {
   return player ? player.getPlayerState() : null;
 }
@@ -245,5 +258,6 @@ export {
   initYouTubePlayer,
   loadVideo,
   stopVideo,
+  togglePlayPause,
   getPlayerState
 };

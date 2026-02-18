@@ -1,4 +1,4 @@
-import { initYouTubePlayer, loadVideo, stopVideo } from "./youtube-api.js";
+import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerState } from "./youtube-api.js";
 import {
   updateQueueItemStatus,
   removeQueueItem,
@@ -57,6 +57,14 @@ function initPlayerController(sessionCode, domElements) {
     overlaySkipBtn.addEventListener("click", skipCurrentSong);
   }
 
+  // Overlay play/pause button
+  const playPauseBtn = document.getElementById("overlay-playpause-btn");
+  if (playPauseBtn) {
+    playPauseBtn.addEventListener("click", () => {
+      togglePlayPause();
+    });
+  }
+
   // Overlay fullscreen button
   const fullscreenBtn = document.getElementById("overlay-fullscreen-btn");
   if (fullscreenBtn) {
@@ -81,6 +89,28 @@ function onPlayerStateChange(event) {
   // YT.PlayerState.ENDED === 0
   if (event.data === 0) {
     markCurrentAsPlayed();
+  }
+  updatePlayPauseIcon(event.data);
+}
+
+function updatePlayPauseIcon(state) {
+  const btn = document.getElementById("overlay-playpause-btn");
+  const playIcon = document.getElementById("pp-play-icon");
+  const pauseIcon = document.getElementById("pp-pause-icon");
+  if (!btn || !playIcon || !pauseIcon) return;
+
+  // Show button when a video is loaded
+  if (currentSong) {
+    btn.classList.remove("hidden");
+  }
+
+  // 1 = playing, 2 = paused, 3 = buffering
+  if (state === 1 || state === 3) {
+    playIcon.classList.add("hidden");
+    pauseIcon.classList.remove("hidden");
+  } else {
+    playIcon.classList.remove("hidden");
+    pauseIcon.classList.add("hidden");
   }
 }
 

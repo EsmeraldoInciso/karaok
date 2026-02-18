@@ -82,17 +82,23 @@
 #player-container:fullscreen {
   border-radius: 0;
   background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* In fullscreen, keep video at 16:9 centered (no cropping) */
 #player-container:fullscreen #youtube-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: calc(100vh * 16 / 9);
+  max-height: calc(100vw * 9 / 16);
+  aspect-ratio: 16 / 9;
   border-radius: 0;
 }
 
 /* Hide cursor when overlay is hidden in fullscreen */
-#player-container:fullscreen #player-overlay.opacity-0 {
-  cursor: none;
-}
-
 #player-container:fullscreen {
   cursor: none;
 }
