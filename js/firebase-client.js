@@ -18,9 +18,11 @@ import {
 
 async function createSession(sessionCode, hostUserId) {
   const sessionRef = doc(db, "sessions", sessionCode);
+  const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await setDoc(sessionRef, {
     hostUserId,
     createdAt: serverTimestamp(),
+    expireAt,
     isActive: true,
     currentSongIndex: 0
   });
