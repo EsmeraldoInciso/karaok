@@ -57,6 +57,15 @@ function initPlayerController(sessionCode, domElements) {
     overlaySkipBtn.addEventListener("click", skipCurrentSong);
   }
 
+  // Overlay fullscreen button
+  const fullscreenBtn = document.getElementById("overlay-fullscreen-btn");
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener("click", toggleFullscreen);
+  }
+
+  // Listen for fullscreen changes (including Escape key exit)
+  document.addEventListener("fullscreenchange", onFullscreenChange);
+
   // Overlay auto-hide on mouse activity
   const playerContainer = document.getElementById("player-container");
   if (playerContainer) {
@@ -159,6 +168,37 @@ function hideOverlay() {
   clearTimeout(overlayTimer);
 }
 
+function toggleFullscreen() {
+  const container = document.getElementById("player-container");
+  if (!container) return;
+
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    container.requestFullscreen();
+  }
+}
+
+function onFullscreenChange() {
+  const isFs = !!document.fullscreenElement;
+  const expandIcon = document.getElementById("fs-expand-icon");
+  const shrinkIcon = document.getElementById("fs-shrink-icon");
+  const overlayNowPlaying = document.getElementById("overlay-now-playing");
+
+  if (expandIcon && shrinkIcon) {
+    expandIcon.classList.toggle("hidden", isFs);
+    shrinkIcon.classList.toggle("hidden", !isFs);
+  }
+
+  // Show now-playing info in fullscreen overlay (since bottom bar is hidden)
+  if (overlayNowPlaying) {
+    overlayNowPlaying.classList.toggle("hidden", !isFs);
+  }
+
+  // Show overlay briefly when entering/exiting fullscreen
+  showOverlay();
+}
+
 function updateOverlay() {
   const upNextEl = document.getElementById("overlay-up-next");
   const skipWrap = document.getElementById("overlay-skip-wrap");
@@ -188,6 +228,19 @@ function updateOverlay() {
     }
   } else {
     upNextEl.classList.add("hidden");
+  }
+
+  // Update overlay now-playing (visible in fullscreen)
+  const overlayNowTitle = document.getElementById("overlay-now-title");
+  const overlayNowBy = document.getElementById("overlay-now-by");
+  if (overlayNowTitle && overlayNowBy) {
+    if (currentSong) {
+      overlayNowTitle.textContent = currentSong.title || "";
+      overlayNowBy.textContent = `Requested by ${currentSong.addedByName || ""}`;
+    } else {
+      overlayNowTitle.textContent = "";
+      overlayNowBy.textContent = "";
+    }
   }
 }
 

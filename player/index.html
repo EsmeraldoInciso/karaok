@@ -57,14 +57,36 @@
             </div>
           </div>
 
-          <!-- Skip Button (bottom-right) -->
-          <div id="overlay-skip-wrap" class="absolute bottom-4 right-4 pointer-events-auto hidden">
-            <button id="overlay-skip-btn" class="flex items-center gap-2 px-5 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white rounded-full transition-colors border border-white/20">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-              </svg>
-              Skip
-            </button>
+          <!-- Bottom Controls (skip + fullscreen) -->
+          <div class="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-auto">
+            <!-- Now Playing (bottom-left, only in fullscreen) -->
+            <div id="overlay-now-playing" class="hidden">
+              <p id="overlay-now-title" class="text-sm text-white font-medium truncate max-w-xs"></p>
+              <p id="overlay-now-by" class="text-xs text-gray-400"></p>
+            </div>
+            <div></div>
+
+            <!-- Right buttons -->
+            <div class="flex items-center gap-3">
+              <div id="overlay-skip-wrap" class="hidden">
+                <button id="overlay-skip-btn" class="flex items-center gap-2 px-5 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white rounded-full transition-colors border border-white/20">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                  Skip
+                </button>
+              </div>
+              <button id="overlay-fullscreen-btn" class="flex items-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white rounded-full transition-colors border border-white/20">
+                <!-- Expand icon (shown when not fullscreen) -->
+                <svg id="fs-expand-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+                </svg>
+                <!-- Shrink icon (shown when fullscreen) -->
+                <svg id="fs-shrink-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v5H4m11 0h5V4M4 15h5v5m6-5h5v5"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>

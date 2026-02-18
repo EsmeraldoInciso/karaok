@@ -190,7 +190,8 @@ function initYouTubePlayer(elementId, onStateChange, onError) {
           autoplay: 1,
           controls: 1,
           rel: 0,
-          modestbranding: 1
+          modestbranding: 1,
+          fs: 0  // Disable native fullscreen (we use our own so overlay works)
         },
         events: {
           onReady: () => resolve(player),

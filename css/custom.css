@@ -81,10 +81,24 @@
 /* Fullscreen: make player container fill the screen */
 #player-container:fullscreen {
   border-radius: 0;
+  background: #000;
 }
 
 #player-container:fullscreen #youtube-player {
   border-radius: 0;
+}
+
+/* Hide cursor when overlay is hidden in fullscreen */
+#player-container:fullscreen #player-overlay.opacity-0 {
+  cursor: none;
+}
+
+#player-container:fullscreen {
+  cursor: none;
+}
+
+#player-container:fullscreen #player-overlay.opacity-100 {
+  cursor: default;
 }
 
 /* Toast animation */
