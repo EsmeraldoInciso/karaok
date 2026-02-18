@@ -51,12 +51,29 @@ async function pipedSearch(queryText, maxResults = 10) {
 
     const items = (data.items || []).slice(0, maxResults);
 
-    return items.map((item) => ({
+    const results = items.map((item) => ({
       videoId: item.url?.replace("/watch?v=", "") || "",
       title: item.title || "Unknown",
       channelTitle: item.uploaderName || "",
       thumbnailUrl: item.thumbnail || ""
     }));
+
+    // Filter out non-embeddable videos using YouTube's free oEmbed endpoint
+    const checked = await Promise.all(
+      results.map(async (r) => {
+        try {
+          const res = await fetch(
+            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${r.videoId}&format=json`,
+            { method: "HEAD", signal: AbortSignal.timeout(3000) }
+          );
+          return res.ok ? r : null;
+        } catch {
+          return r; // On timeout, keep the result (let player handle it)
+        }
+      })
+    );
+
+    return checked.filter(Boolean);
   } catch {
     return null;
   }
