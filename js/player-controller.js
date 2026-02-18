@@ -18,6 +18,10 @@ let unsubscribeParticipants = null;
 // DOM references (set during init)
 let elements = {};
 
+// Overlay auto-hide timer
+let overlayTimer = null;
+const OVERLAY_HIDE_DELAY = 3000;
+
 function initPlayerController(sessionCode, domElements) {
   currentSessionCode = sessionCode;
   elements = domElements;
@@ -45,6 +49,22 @@ function initPlayerController(sessionCode, domElements) {
   }
   if (elements.endSessionBtn) {
     elements.endSessionBtn.addEventListener("click", handleEndSession);
+  }
+
+  // Overlay skip button
+  const overlaySkipBtn = document.getElementById("overlay-skip-btn");
+  if (overlaySkipBtn) {
+    overlaySkipBtn.addEventListener("click", skipCurrentSong);
+  }
+
+  // Overlay auto-hide on mouse activity
+  const playerContainer = document.getElementById("player-container");
+  if (playerContainer) {
+    playerContainer.addEventListener("mousemove", showOverlay);
+    playerContainer.addEventListener("mouseenter", showOverlay);
+    playerContainer.addEventListener("mouseleave", hideOverlay);
+    // Also show on touch for mobile
+    playerContainer.addEventListener("touchstart", showOverlay, { passive: true });
   }
 }
 
@@ -121,6 +141,56 @@ async function handleEndSession() {
   }
 }
 
+function showOverlay() {
+  const overlay = document.getElementById("player-overlay");
+  if (!overlay) return;
+  overlay.classList.remove("opacity-0");
+  overlay.classList.add("opacity-100");
+
+  clearTimeout(overlayTimer);
+  overlayTimer = setTimeout(hideOverlay, OVERLAY_HIDE_DELAY);
+}
+
+function hideOverlay() {
+  const overlay = document.getElementById("player-overlay");
+  if (!overlay) return;
+  overlay.classList.remove("opacity-100");
+  overlay.classList.add("opacity-0");
+  clearTimeout(overlayTimer);
+}
+
+function updateOverlay() {
+  const upNextEl = document.getElementById("overlay-up-next");
+  const skipWrap = document.getElementById("overlay-skip-wrap");
+  if (!upNextEl || !skipWrap) return;
+
+  // Show/hide skip button based on whether a song is playing
+  if (currentSong) {
+    skipWrap.classList.remove("hidden");
+  } else {
+    skipWrap.classList.add("hidden");
+  }
+
+  // Show/hide up-next bar
+  const nextSong = queue.find((s) => s.status === "queued" && (!currentSong || s.id !== currentSong.id));
+  if (nextSong) {
+    upNextEl.classList.remove("hidden");
+    const thumbEl = document.getElementById("overlay-next-thumb");
+    const titleEl = document.getElementById("overlay-next-title");
+    const byEl = document.getElementById("overlay-next-by");
+    if (titleEl) titleEl.textContent = nextSong.title || "Unknown";
+    if (byEl) byEl.textContent = nextSong.addedByName || "";
+    if (thumbEl && nextSong.thumbnailUrl) {
+      thumbEl.src = nextSong.thumbnailUrl;
+      thumbEl.classList.remove("hidden");
+    } else if (thumbEl) {
+      thumbEl.classList.add("hidden");
+    }
+  } else {
+    upNextEl.classList.add("hidden");
+  }
+}
+
 function updateNowPlaying() {
   if (!elements.nowPlaying) return;
 
@@ -135,6 +205,9 @@ function updateNowPlaying() {
       <p class="text-gray-400">No song playing. Queue a song to get started!</p>
     `;
   }
+
+  // Also update the fullscreen overlay
+  updateOverlay();
 }
 
 function renderQueue() {

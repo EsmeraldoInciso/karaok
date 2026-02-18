@@ -68,6 +68,25 @@
   border-radius: 2px;
 }
 
+/* Player overlay — ensure it sits above the YouTube iframe */
+#player-overlay {
+  z-index: 20;
+}
+
+/* When overlay is visible, allow clicks through to buttons but block iframe interaction */
+#player-overlay.opacity-100 {
+  cursor: default;
+}
+
+/* Fullscreen: make player container fill the screen */
+#player-container:fullscreen {
+  border-radius: 0;
+}
+
+#player-container:fullscreen #youtube-player {
+  border-radius: 0;
+}
+
 /* Toast animation */
 .toast-enter {
   animation: slide-up 0.3s ease-out;
