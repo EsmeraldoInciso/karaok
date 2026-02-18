@@ -42,6 +42,19 @@
       <div class="flex-1 bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center relative" id="player-container">
         <div id="youtube-player" class="absolute inset-0"></div>
         <div id="iframe-shield"></div>
+
+        <!-- Ad overlay: shown when ad detected, covers video with muted message -->
+        <div id="ad-overlay" class="absolute inset-0 z-30 bg-black/90 flex items-center justify-center hidden">
+          <div class="text-center">
+            <svg class="w-12 h-12 text-yellow-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+            </svg>
+            <p class="text-white text-lg font-semibold">Ad Playing — Muted</p>
+            <p class="text-gray-400 text-sm mt-1">Your karaoke will resume shortly</p>
+          </div>
+        </div>
+
         <p id="player-placeholder" class="text-gray-600 text-sm z-10">Share the session code to queue songs</p>
 
         <!-- Fullscreen Overlay: Up Next + Skip (auto-hides on inactivity) -->

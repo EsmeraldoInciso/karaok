@@ -256,6 +256,7 @@ async function loadVideo(videoId) {
   if (!player) {
     await playerReadyPromise;
   }
+  loadedVideoId = videoId;
   player.loadVideoById(videoId);
 }
 
@@ -288,6 +289,41 @@ function getPlayerState() {
   return player ? player.getPlayerState() : null;
 }
 
+// Ad detection: check if the current video URL differs from what we loaded
+let loadedVideoId = null;
+
+function setLoadedVideoId(id) {
+  loadedVideoId = id;
+}
+
+function isAdPlaying() {
+  if (!player || !loadedVideoId) return false;
+  try {
+    const url = player.getVideoUrl();
+    if (!url) return false;
+    // During ads, getVideoUrl() still returns the main video URL on some players,
+    // but getVideoData() may have ad info. Check multiple signals:
+    const data = player.getVideoData();
+    // If video_id from player doesn't match what we loaded, likely an ad
+    if (data && data.video_id && data.video_id !== loadedVideoId) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function mutePlayer() {
+  if (player) player.mute();
+}
+
+function unmutePlayer() {
+  if (player) player.unMute();
+}
+
+function isPlayerMuted() {
+  return player ? player.isMuted() : false;
+}
+
 export {
   searchKaraoke,
   extractVideoId,
@@ -299,5 +335,9 @@ export {
   togglePlayPause,
   getPlayerTime,
   getPlayerDuration,
-  getPlayerState
+  getPlayerState,
+  isAdPlaying,
+  mutePlayer,
+  unmutePlayer,
+  isPlayerMuted
 };

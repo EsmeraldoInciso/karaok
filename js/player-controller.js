@@ -1,4 +1,4 @@
-import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState } from "./youtube-api.js";
+import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState, isAdPlaying, mutePlayer, unmutePlayer } from "./youtube-api.js";
 import {
   updateQueueItemStatus,
   removeQueueItem,
@@ -24,6 +24,11 @@ const OVERLAY_HIDE_DELAY = 3000;
 
 // End screen detection timer
 let endScreenTimer = null;
+
+// Ad detection
+let adCheckTimer = null;
+let adCurrentlyShowing = false;
+let wasMutedBeforeAd = false;
 
 function initPlayerController(sessionCode, domElements) {
   currentSessionCode = sessionCode;
@@ -106,11 +111,13 @@ function onPlayerStateChange(event) {
     markCurrentAsPlayed();
   }
 
-  // Start monitoring for end screen when playing
+  // Start monitoring for end screen and ads when playing
   if (event.data === 1) {
     startEndScreenMonitor();
+    startAdMonitor();
   } else if (event.data === 0 || event.data === 5) {
     stopEndScreenMonitor();
+    stopAdMonitor();
   }
 
   updatePlayPauseIcon(event.data);
@@ -138,6 +145,39 @@ function stopEndScreenMonitor() {
     clearInterval(endScreenTimer);
     endScreenTimer = null;
   }
+}
+
+// --- Ad detection: mute + show overlay during ads ---
+
+function startAdMonitor() {
+  stopAdMonitor();
+  adCheckTimer = setInterval(() => {
+    const adPlaying = isAdPlaying();
+    const adOverlay = document.getElementById("ad-overlay");
+
+    if (adPlaying && !adCurrentlyShowing) {
+      // Ad just started
+      adCurrentlyShowing = true;
+      wasMutedBeforeAd = false;
+      mutePlayer();
+      if (adOverlay) adOverlay.classList.remove("hidden");
+      console.log("Ad detected — muted");
+    } else if (!adPlaying && adCurrentlyShowing) {
+      // Ad just ended
+      adCurrentlyShowing = false;
+      if (!wasMutedBeforeAd) unmutePlayer();
+      if (adOverlay) adOverlay.classList.add("hidden");
+      console.log("Ad ended — unmuted");
+    }
+  }, 500);
+}
+
+function stopAdMonitor() {
+  if (adCheckTimer) {
+    clearInterval(adCheckTimer);
+    adCheckTimer = null;
+  }
+  adCurrentlyShowing = false;
 }
 
 function updatePlayPauseIcon(state) {
