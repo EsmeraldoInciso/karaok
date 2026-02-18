@@ -18,16 +18,11 @@
   height: 100%;
 }
 
-/* Transparent overlay blocks all YouTube iframe interactions (hover, clicks, end screen) */
-#youtube-player::before {
-  content: "";
+/* Transparent shield blocks all YouTube iframe interactions (hover, clicks, end screen) */
+#iframe-shield {
   position: absolute;
   inset: 0;
-  z-index: 1;
-}
-
-#youtube-player {
-  position: relative;
+  z-index: 2;
 }
 
 /* Pulse animation for now playing indicator */
