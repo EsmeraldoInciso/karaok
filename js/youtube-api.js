@@ -246,6 +246,14 @@ function togglePlayPause() {
   }
 }
 
+function getPlayerTime() {
+  return player ? player.getCurrentTime() : 0;
+}
+
+function getPlayerDuration() {
+  return player ? player.getDuration() : 0;
+}
+
 function getPlayerState() {
   return player ? player.getPlayerState() : null;
 }
@@ -259,5 +267,7 @@ export {
   loadVideo,
   stopVideo,
   togglePlayPause,
+  getPlayerTime,
+  getPlayerDuration,
   getPlayerState
 };

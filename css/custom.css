@@ -18,6 +18,24 @@
   height: 100%;
 }
 
+/* Hide YouTube end screen cards/suggestions by covering the top portion */
+#youtube-player.hide-endscreen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: #000;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Ensure youtube-player is positioned for the ::after pseudo-element */
+#youtube-player {
+  position: relative;
+}
+
 /* Pulse animation for now playing indicator */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }

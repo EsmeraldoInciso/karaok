@@ -1,4 +1,4 @@
-import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerState } from "./youtube-api.js";
+import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState } from "./youtube-api.js";
 import {
   updateQueueItemStatus,
   removeQueueItem,
@@ -21,6 +21,9 @@ let elements = {};
 // Overlay auto-hide timer
 let overlayTimer = null;
 const OVERLAY_HIDE_DELAY = 3000;
+
+// End screen detection timer
+let endScreenTimer = null;
 
 function initPlayerController(sessionCode, domElements) {
   currentSessionCode = sessionCode;
@@ -88,9 +91,47 @@ function initPlayerController(sessionCode, domElements) {
 function onPlayerStateChange(event) {
   // YT.PlayerState.ENDED === 0
   if (event.data === 0) {
+    clearEndScreenCover();
     markCurrentAsPlayed();
   }
+
+  // Start monitoring for end screen when playing
+  if (event.data === 1) {
+    startEndScreenMonitor();
+  } else if (event.data === 0 || event.data === 5) {
+    stopEndScreenMonitor();
+  }
+
   updatePlayPauseIcon(event.data);
+}
+
+function startEndScreenMonitor() {
+  stopEndScreenMonitor();
+  endScreenTimer = setInterval(() => {
+    const current = getPlayerTime();
+    const duration = getPlayerDuration();
+    const playerEl = document.getElementById("youtube-player");
+    if (!playerEl || !duration) return;
+
+    // YouTube end screen cards appear in the last ~20 seconds
+    if (duration - current <= 20) {
+      playerEl.classList.add("hide-endscreen");
+    } else {
+      playerEl.classList.remove("hide-endscreen");
+    }
+  }, 1000);
+}
+
+function stopEndScreenMonitor() {
+  if (endScreenTimer) {
+    clearInterval(endScreenTimer);
+    endScreenTimer = null;
+  }
+}
+
+function clearEndScreenCover() {
+  const playerEl = document.getElementById("youtube-player");
+  if (playerEl) playerEl.classList.remove("hide-endscreen");
 }
 
 function updatePlayPauseIcon(state) {
@@ -153,6 +194,9 @@ async function playNextIfIdle() {
   // Hide placeholder when a song starts
   const placeholder = document.getElementById("player-placeholder");
   if (placeholder) placeholder.classList.add("hidden");
+
+  // Clear any end screen cover from previous video
+  clearEndScreenCover();
 
   await updateQueueItemStatus(currentSessionCode, nextSong.id, "playing");
   await loadVideo(nextSong.videoId);
