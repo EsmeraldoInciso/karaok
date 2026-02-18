@@ -1,11 +1,22 @@
-import { YOUTUBE_API_KEY } from "./config.js";
+import { YOUTUBE_API_KEY, PIPED_PROXY_URL } from "./config.js";
 
-// Piped API instances (fallback chain)
-const PIPED_INSTANCES = [
-  "https://pipedapi.kavin.rocks",
-  "https://pipedapi.adminforge.de",
-  "https://pipedapi.in.projectsegfau.lt"
-];
+// --- Search cache (avoids duplicate API calls) ---
+const searchCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCached(key) {
+  const entry = searchCache.get(key);
+  if (entry && Date.now() - entry.time < CACHE_TTL) {
+    console.log("Search result from cache");
+    return entry.data;
+  }
+  searchCache.delete(key);
+  return null;
+}
+
+function setCache(key, data) {
+  searchCache.set(key, { data, time: Date.now() });
+}
 
 // Extract video ID from a YouTube URL (returns null if not a YouTube URL)
 function extractVideoId(input) {
@@ -25,54 +36,52 @@ function isYouTubeUrl(input) {
   return /(?:youtube\.com|youtu\.be)/.test(input.trim());
 }
 
-// --- Piped API (free, unlimited) ---
+// --- Piped API via Cloudflare Worker proxy (free, unlimited) ---
 
 async function pipedSearch(queryText, maxResults = 10) {
-  for (const instance of PIPED_INSTANCES) {
-    try {
-      const response = await fetch(`${instance}/search?q=${encodeURIComponent(queryText)}&filter=videos`, {
-        signal: AbortSignal.timeout(5000)
-      });
+  try {
+    const response = await fetch(`${PIPED_PROXY_URL}/search?q=${encodeURIComponent(queryText)}&filter=videos`, {
+      signal: AbortSignal.timeout(10000)
+    });
 
-      if (!response.ok) continue;
+    if (!response.ok) return null;
 
-      const data = await response.json();
-      const items = (data.items || []).slice(0, maxResults);
+    const data = await response.json();
+    if (data.error) return null;
 
-      return items.map((item) => ({
-        videoId: item.url?.replace("/watch?v=", "") || "",
-        title: item.title || "Unknown",
-        channelTitle: item.uploaderName || "",
-        thumbnailUrl: item.thumbnail || ""
-      }));
-    } catch {
-      continue; // Try next instance
-    }
+    const items = (data.items || []).slice(0, maxResults);
+
+    return items.map((item) => ({
+      videoId: item.url?.replace("/watch?v=", "") || "",
+      title: item.title || "Unknown",
+      channelTitle: item.uploaderName || "",
+      thumbnailUrl: item.thumbnail || ""
+    }));
+  } catch {
+    return null;
   }
-  return null; // All instances failed
 }
 
 async function pipedGetVideo(videoId) {
-  for (const instance of PIPED_INSTANCES) {
-    try {
-      const response = await fetch(`${instance}/streams/${videoId}`, {
-        signal: AbortSignal.timeout(5000)
-      });
+  try {
+    const response = await fetch(`${PIPED_PROXY_URL}/streams/${videoId}`, {
+      signal: AbortSignal.timeout(10000)
+    });
 
-      if (!response.ok) continue;
+    if (!response.ok) return null;
 
-      const data = await response.json();
-      return {
-        videoId,
-        title: data.title || "Unknown",
-        channelTitle: data.uploader || "",
-        thumbnailUrl: data.thumbnailUrl || ""
-      };
-    } catch {
-      continue;
-    }
+    const data = await response.json();
+    if (data.error) return null;
+
+    return {
+      videoId,
+      title: data.title || "Unknown",
+      channelTitle: data.uploader || "",
+      thumbnailUrl: data.thumbnailUrl || ""
+    };
+  } catch {
+    return null;
   }
-  return null;
 }
 
 // --- YouTube Data API (fallback, uses quota) ---
@@ -122,34 +131,49 @@ async function youtubeApiGetVideo(videoId) {
   };
 }
 
-// --- Public API: Piped first, YouTube API fallback ---
+// --- Public API: Piped proxy first, YouTube API fallback ---
 
 async function searchKaraoke(queryText, maxResults = 10) {
   const searchQuery = `${queryText} karaoke`;
 
-  // Try Piped first (free, unlimited)
+  // Check cache first
+  const cached = getCached(searchQuery);
+  if (cached) return cached;
+
+  // Try Piped proxy first (free, unlimited)
   const pipedResults = await pipedSearch(searchQuery, maxResults);
   if (pipedResults && pipedResults.length > 0) {
-    console.log("Search via Piped (free)");
+    console.log("Search via Piped proxy (free)");
+    setCache(searchQuery, pipedResults);
     return pipedResults;
   }
 
   // Fallback to YouTube Data API (100 units per search)
-  console.warn("Piped unavailable, falling back to YouTube API");
-  return youtubeApiSearch(searchQuery, maxResults);
+  console.warn("Piped proxy unavailable, falling back to YouTube API");
+  const ytResults = await youtubeApiSearch(searchQuery, maxResults);
+  setCache(searchQuery, ytResults);
+  return ytResults;
 }
 
 async function getVideoById(videoId) {
-  // Try Piped first (free)
+  // Check cache
+  const cacheKey = `video:${videoId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  // Try Piped proxy first (free)
   const pipedResult = await pipedGetVideo(videoId);
   if (pipedResult) {
-    console.log("Video lookup via Piped (free)");
+    console.log("Video lookup via Piped proxy (free)");
+    setCache(cacheKey, pipedResult);
     return pipedResult;
   }
 
   // Fallback to YouTube Data API (1 unit)
-  console.warn("Piped unavailable, falling back to YouTube API");
-  return youtubeApiGetVideo(videoId);
+  console.warn("Piped proxy unavailable, falling back to YouTube API");
+  const ytResult = await youtubeApiGetVideo(videoId);
+  setCache(cacheKey, ytResult);
+  return ytResult;
 }
 
 // YouTube IFrame Player wrapper

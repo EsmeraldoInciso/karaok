@@ -11,6 +11,9 @@ const firebaseConfig = {
 // YouTube Data API v3 Key
 const YOUTUBE_API_KEY = "AIzaSyBgN1vw06WvEoWZvcCXGANOmhHojPcb3ro";
 
+// Piped API proxy (Cloudflare Worker — free, unlimited search)
+const PIPED_PROXY_URL = "https://karaok-piped.esmeraldoinciso.workers.dev";
+
 // reCAPTCHA v3 Site Key (public — secret key stays server-side only)
 const RECAPTCHA_SITE_KEY = "6LciQm8sAAAAAJN2WbfPOLZK94nJTODTMLnjboZ_";
 
@@ -18,4 +21,4 @@ const RECAPTCHA_SITE_KEY = "6LciQm8sAAAAAJN2WbfPOLZK94nJTODTMLnjboZ_";
 const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const BASE_URL = isLocal ? "" : window.location.origin + "/karaok";
 
-export { firebaseConfig, YOUTUBE_API_KEY, RECAPTCHA_SITE_KEY, BASE_URL };
+export { firebaseConfig, YOUTUBE_API_KEY, PIPED_PROXY_URL, RECAPTCHA_SITE_KEY, BASE_URL };
