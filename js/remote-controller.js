@@ -1,5 +1,5 @@
 import { searchKaraoke } from "./youtube-api.js";
-import { addToQueue, onFullQueueChanged } from "./firebase-client.js";
+import { addToQueue, onFullQueueChanged, updateQueueItemStatus } from "./firebase-client.js";
 
 let currentSessionCode = null;
 let currentUser = null;
@@ -122,13 +122,20 @@ function renderNowPlaying() {
 
   if (playingSong) {
     elements.nowPlaying.innerHTML = `
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 min-w-0 flex-1">
         <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
         <div class="min-w-0">
           <p class="text-xs text-gray-400">Now Playing</p>
           <p class="text-sm text-white truncate">${escapeHtml(playingSong.title)}</p>
         </div>
       </div>
+      <button onclick="window.remoteSkipSong('${playingSong.id}')"
+        class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        Skip
+      </button>
     `;
   } else {
     elements.nowPlaying.innerHTML = `
@@ -188,8 +195,18 @@ function escapeAttr(text) {
   return (text || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
 }
 
+async function handleSkipSong(queueItemId) {
+  try {
+    await updateQueueItemStatus(currentSessionCode, queueItemId, "skipped");
+    showToast("Song skipped!");
+  } catch (error) {
+    showToast("Failed to skip: " + error.message, true);
+  }
+}
+
 // Expose for inline onclick handlers
 window.remoteAddToQueue = handleAddToQueue;
+window.remoteSkipSong = handleSkipSong;
 
 function cleanup() {
   if (unsubscribeQueue) unsubscribeQueue();

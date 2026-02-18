@@ -23,7 +23,7 @@ function initPlayerController(sessionCode, domElements) {
   elements = domElements;
 
   // Initialize YouTube player
-  initYouTubePlayer("youtube-player", onPlayerStateChange);
+  initYouTubePlayer("youtube-player", onPlayerStateChange, onPlayerError);
 
   // Listen for queue changes
   unsubscribeQueue = onQueueChanged(sessionCode, (songs) => {
@@ -52,6 +52,17 @@ function onPlayerStateChange(event) {
   // YT.PlayerState.ENDED === 0
   if (event.data === 0) {
     markCurrentAsPlayed();
+  }
+}
+
+function onPlayerError(event) {
+  // Auto-skip unplayable videos (embedding disabled, removed, etc.)
+  if (currentSong) {
+    console.warn(`Skipping unplayable video: ${currentSong.title}`);
+    updateQueueItemStatus(currentSessionCode, currentSong.id, "skipped");
+    currentSong = null;
+    isPlaying = false;
+    playNextIfIdle();
   }
 }
 

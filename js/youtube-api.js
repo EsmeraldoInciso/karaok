@@ -3,7 +3,7 @@ import { YOUTUBE_API_KEY } from "./config.js";
 // Search YouTube for karaoke videos
 async function searchKaraoke(queryText, maxResults = 10) {
   const searchQuery = `${queryText} karaoke`;
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
 
   const response = await fetch(url);
 
@@ -26,7 +26,7 @@ async function searchKaraoke(queryText, maxResults = 10) {
 let player = null;
 let playerReadyPromise = null;
 
-function initYouTubePlayer(elementId, onStateChange) {
+function initYouTubePlayer(elementId, onStateChange, onError) {
   playerReadyPromise = new Promise((resolve) => {
     window.onYouTubeIframeAPIReady = () => {
       player = new YT.Player(elementId, {
@@ -42,6 +42,10 @@ function initYouTubePlayer(elementId, onStateChange) {
           onReady: () => resolve(player),
           onStateChange: (event) => {
             if (onStateChange) onStateChange(event);
+          },
+          onError: (event) => {
+            console.warn("YouTube player error:", event.data);
+            if (onError) onError(event);
           }
         }
       });
