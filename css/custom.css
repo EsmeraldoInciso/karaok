@@ -18,6 +18,19 @@
   height: 100%;
 }
 
+/* Hide YouTube top bar (title, watch later, share) permanently */
+#youtube-player::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #000;
+  z-index: 1;
+  pointer-events: none;
+}
+
 /* Hide YouTube end screen cards/suggestions by covering the top portion */
 #youtube-player.hide-endscreen::after {
   content: "";
@@ -31,7 +44,7 @@
   pointer-events: none;
 }
 
-/* Ensure youtube-player is positioned for the ::after pseudo-element */
+/* Ensure youtube-player is positioned for pseudo-elements */
 #youtube-player {
   position: relative;
 }
