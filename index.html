@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KaraOK — Karaoke Together</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+
+  <!-- Navigation -->
+  <nav class="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
+    <a data-link="/" class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+      KaraOK
+    </a>
+    <div class="flex gap-3" id="nav-actions">
+      <a data-link="/login/" class="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors">Log In</a>
+      <a data-link="/signup/" class="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors">Sign Up</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <main class="max-w-6xl mx-auto px-6 pt-20 pb-32">
+    <div class="text-center max-w-3xl mx-auto">
+      <h1 class="text-5xl sm:text-6xl font-bold leading-tight mb-6">
+        Karaoke Night,
+        <span class="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">Reimagined</span>
+      </h1>
+      <p class="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
+        Create a karaoke session, share the code, and let everyone queue their favorite songs from their phones. No app install needed.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a data-link="/signup/" class="px-8 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl text-lg font-semibold transition-colors">
+          Get Started Free
+        </a>
+        <a href="#how-it-works" class="px-8 py-3 border border-gray-700 hover:border-gray-500 rounded-xl text-lg text-gray-300 hover:text-white transition-colors">
+          How It Works
+        </a>
+      </div>
+    </div>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="mt-32">
+      <h2 class="text-3xl font-bold text-center mb-16">How It Works</h2>
+      <div class="grid sm:grid-cols-3 gap-8">
+        <div class="text-center p-6">
+          <div class="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">1. Create a Session</h3>
+          <p class="text-gray-400">Start a karaoke session and get a unique code to share with your friends.</p>
+        </div>
+        <div class="text-center p-6">
+          <div class="w-16 h-16 bg-pink-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">2. Scan & Join</h3>
+          <p class="text-gray-400">Friends scan the QR code or enter the session code from their phones.</p>
+        </div>
+        <div class="text-center p-6">
+          <div class="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">3. Queue & Sing</h3>
+          <p class="text-gray-400">Search for karaoke songs, add them to the queue, and sing your heart out!</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800 py-8 text-center text-gray-500 text-sm space-y-2">
+    <p>KaraOK &mdash; Karaoke made simple.</p>
+    <p>
+      <a data-link="/privacy/" class="hover:text-gray-300 underline">Privacy Policy</a>
+      &middot;
+      <a data-link="/terms/" class="hover:text-gray-300 underline">Terms of Service</a>
+    </p>
+  </footer>
+
+  <script type="module">
+    import { redirectIfAuth } from "./js/auth.js";
+    import { resolveLinks } from "./js/links.js";
+
+    resolveLinks();
+
+    // If already logged in, redirect to dashboard
+    await redirectIfAuth();
+  </script>
+</body>
+</html>
