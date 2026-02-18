@@ -113,11 +113,18 @@ function startEndScreenMonitor() {
     const playerEl = document.getElementById("youtube-player");
     if (!playerEl || !duration) return;
 
+    const remaining = duration - current;
+
     // YouTube end screen cards appear in the last ~20 seconds
-    if (duration - current <= 20) {
+    if (remaining <= 20) {
       playerEl.classList.add("hide-endscreen");
     } else {
       playerEl.classList.remove("hide-endscreen");
+    }
+
+    // Show overlay with up-next info 10 seconds before end
+    if (remaining <= 10 && remaining > 0) {
+      showOverlay();
     }
   }, 1000);
 }
