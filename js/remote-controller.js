@@ -1,4 +1,4 @@
-import { searchKaraoke } from "./youtube-api.js";
+import { searchKaraoke, extractVideoId, isYouTubeUrl, getVideoById } from "./youtube-api.js";
 import { addToQueue, onFullQueueChanged, updateQueueItemStatus } from "./firebase-client.js";
 
 let currentSessionCode = null;
@@ -59,6 +59,18 @@ async function handleSearch(queryText) {
   }
 
   try {
+    // Check if input is a YouTube URL (costs 1 unit instead of 100)
+    const videoId = extractVideoId(queryText);
+    if (videoId || isYouTubeUrl(queryText)) {
+      if (!videoId) {
+        throw new Error("Could not extract video ID from URL");
+      }
+      const video = await getVideoById(videoId);
+      renderSearchResults([video]);
+      return;
+    }
+
+    // Regular search (costs 100 units)
     const results = await searchKaraoke(queryText);
     renderSearchResults(results);
   } catch (error) {
