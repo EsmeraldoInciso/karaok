@@ -217,9 +217,11 @@ async function handleEndSession() {
 
 function showOverlay() {
   const overlay = document.getElementById("player-overlay");
+  const container = document.getElementById("player-container");
   if (!overlay) return;
   overlay.classList.remove("opacity-0");
   overlay.classList.add("opacity-100");
+  if (container) container.classList.add("overlay-visible");
 
   clearTimeout(overlayTimer);
   overlayTimer = setTimeout(hideOverlay, OVERLAY_HIDE_DELAY);
@@ -227,9 +229,11 @@ function showOverlay() {
 
 function hideOverlay() {
   const overlay = document.getElementById("player-overlay");
+  const container = document.getElementById("player-container");
   if (!overlay) return;
   overlay.classList.remove("opacity-100");
   overlay.classList.add("opacity-0");
+  if (container) container.classList.remove("overlay-visible");
   clearTimeout(overlayTimer);
 }
 

@@ -23,6 +23,7 @@
   position: absolute;
   inset: 0;
   z-index: 2;
+  cursor: default;
 }
 
 /* Pulse animation for now playing indicator */
@@ -105,9 +106,17 @@
   border-radius: 0;
 }
 
-/* Hide cursor when overlay is hidden in fullscreen */
+/* In fullscreen: hide cursor when idle, show when overlay visible */
 #player-container:fullscreen {
   cursor: none;
+}
+
+#player-container:fullscreen #iframe-shield {
+  cursor: inherit;
+}
+
+#player-container:fullscreen.overlay-visible {
+  cursor: default;
 }
 
 #player-container:fullscreen #player-overlay.opacity-100 {
