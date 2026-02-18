@@ -5,14 +5,19 @@
 // solving the browser CORS restriction that blocks direct Piped API calls.
 
 const PIPED_INSTANCES = [
+  "https://api.piped.private.coffee",  // verified working
   "https://pipedapi.kavin.rocks",
+  "https://pipedapi-libre.kavin.rocks",
+  "https://piped-api.privacy.com.de",
   "https://pipedapi.adminforge.de",
-  "https://pipedapi.in.projectsegfau.lt",
-  "https://pipedapi.leptons.xyz",
-  "https://pipedapi.nosebs.ru",
   "https://api.piped.yt",
+  "https://pipedapi.leptons.xyz",
   "https://pipedapi.drgns.space",
-  "https://pipedapi.darkness.services"
+  "https://pipedapi.darkness.services",
+  "https://pipedapi.owo.si",
+  "https://pipedapi.ducks.party",
+  "https://pipedapi.reallyaweso.me",
+  "https://pipedapi.orangenet.cc"
 ];
 
 const CORS_HEADERS = {
@@ -80,8 +85,17 @@ async function proxyToFirstAvailable(buildUrl) {
 
       if (!response.ok) continue;
 
-      const data = await response.text();
-      return new Response(data, {
+      const text = await response.text();
+
+      // Validate response is actual JSON (not HTML error pages or plain text like "Service has been shutdown")
+      if (!text.startsWith("{") && !text.startsWith("[")) continue;
+
+      const data = JSON.parse(text);
+
+      // Validate it's not an error response from Piped
+      if (data.error) continue;
+
+      return new Response(text, {
         status: 200,
         headers: {
           "Content-Type": "application/json",
