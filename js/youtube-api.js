@@ -150,6 +150,14 @@ async function youtubeApiGetVideo(videoId) {
 
 // --- Public API: Piped proxy first, YouTube API fallback ---
 
+// Check if a title looks like a karaoke/instrumental video (not just lyrics)
+function isLikelyKaraoke(title) {
+  const lower = title.toLowerCase();
+  const karaokeTerms = ["karaoke", "instrumental", "backing track", "sing along", "minus one"];
+  const lyricsOnly = /\blyrics?\b/i.test(title) && !karaokeTerms.some((t) => lower.includes(t));
+  return !lyricsOnly;
+}
+
 async function searchKaraoke(queryText, maxResults = 10) {
   const searchQuery = `${queryText} karaoke`;
 
@@ -158,18 +166,23 @@ async function searchKaraoke(queryText, maxResults = 10) {
   if (cached) return cached;
 
   // Try Piped proxy first (free, unlimited)
-  const pipedResults = await pipedSearch(searchQuery, maxResults);
+  // Fetch extra results since some may be filtered out (lyrics-only, non-embeddable)
+  const pipedResults = await pipedSearch(searchQuery, maxResults + 10);
   if (pipedResults && pipedResults.length > 0) {
     console.log("Search via Piped proxy (free)");
-    setCache(searchQuery, pipedResults);
-    return pipedResults;
+    const filtered = pipedResults.filter((r) => isLikelyKaraoke(r.title)).slice(0, maxResults);
+    const final = filtered.length > 0 ? filtered : pipedResults.slice(0, maxResults);
+    setCache(searchQuery, final);
+    return final;
   }
 
   // Fallback to YouTube Data API (100 units per search)
   console.warn("Piped proxy unavailable, falling back to YouTube API");
   const ytResults = await youtubeApiSearch(searchQuery, maxResults);
-  setCache(searchQuery, ytResults);
-  return ytResults;
+  const filtered = ytResults.filter((r) => isLikelyKaraoke(r.title)).slice(0, maxResults);
+  const final = filtered.length > 0 ? filtered : ytResults.slice(0, maxResults);
+  setCache(searchQuery, final);
+  return final;
 }
 
 async function getVideoById(videoId) {
