@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player — KaraOK</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex flex-col">
+
+  <!-- Top Bar -->
+  <nav class="flex items-center justify-between px-6 py-3 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800">
+    <a data-link="/dashboard/" class="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+      KaraOK
+    </a>
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 text-sm text-gray-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span id="participant-count">1</span>
+      </div>
+      <button id="show-qr-btn" class="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+        </svg>
+        <span id="session-code-display" class="font-mono tracking-wider"></span>
+      </button>
+      <button id="end-session-btn" class="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 border border-red-800 hover:border-red-600 rounded-lg transition-colors">
+        End Session
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex gap-4 p-4 overflow-hidden">
+    <!-- Player Area -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- YouTube Player -->
+      <div class="flex-1 bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center relative">
+        <div id="youtube-player" class="absolute inset-0"></div>
+        <p id="player-placeholder" class="text-gray-600 text-sm z-10">Share the session code to queue songs</p>
+      </div>
+
+      <!-- Now Playing Info -->
+      <div id="now-playing" class="mt-3 p-3 bg-gray-900 rounded-xl">
+        <p class="text-gray-400">No song playing. Queue a song to get started!</p>
+      </div>
+    </div>
+
+    <!-- Queue Sidebar -->
+    <div class="w-80 flex-shrink-0 flex flex-col bg-gray-900 rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-gray-800">
+        <h2 class="font-semibold flex items-center gap-2">
+          <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          Up Next
+        </h2>
+      </div>
+      <div id="queue-list" class="flex-1 overflow-y-auto queue-scroll p-3 space-y-2">
+        <p class="text-gray-500 text-center py-4">Queue is empty</p>
+      </div>
+      <div class="p-3 border-t border-gray-800">
+        <button id="skip-btn" class="w-full py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          Skip Song
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- QR Code Modal -->
+  <div id="qr-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 rounded-2xl p-8 text-center max-w-sm mx-4">
+      <h2 class="text-xl font-bold mb-2">Join This Session</h2>
+      <p class="text-gray-400 text-sm mb-6">Scan the QR code or enter the code below</p>
+      <div id="qr-code" class="qr-container flex justify-center mb-6"></div>
+      <p id="qr-session-code" class="text-3xl font-mono font-bold tracking-[0.3em] text-purple-400 mb-6"></p>
+      <button id="close-qr-btn" class="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl transition-colors">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth } from "../js/auth.js";
+    import { getSessionCodeFromUrl } from "../js/session-manager.js";
+    import { getSession } from "../js/firebase-client.js";
+    import { initPlayerController } from "../js/player-controller.js";
+    import { generateQRCode } from "../js/qr-generator.js";
+    import { resolveLinks, appUrl } from "../js/links.js";
+
+    resolveLinks();
+
+    const user = await requireAuth();
+    if (!user) throw new Error("Not authenticated");
+
+    const sessionCode = getSessionCodeFromUrl();
+    if (!sessionCode) {
+      window.location.href = appUrl("/dashboard/");
+      throw new Error("No session code");
+    }
+
+    // Validate session
+    const session = await getSession(sessionCode);
+    if (!session || !session.isActive) {
+      alert("Session not found or has ended.");
+      window.location.href = appUrl("/dashboard/");
+      throw new Error("Invalid session");
+    }
+
+    // Display session code
+    document.getElementById("session-code-display").textContent = sessionCode;
+    document.getElementById("qr-session-code").textContent = sessionCode;
+
+    // Generate QR code
+    generateQRCode(sessionCode, document.getElementById("qr-code"), 200);
+
+    // QR modal
+    const qrModal = document.getElementById("qr-modal");
+    document.getElementById("show-qr-btn").addEventListener("click", () => {
+      qrModal.classList.remove("hidden");
+    });
+    document.getElementById("close-qr-btn").addEventListener("click", () => {
+      qrModal.classList.add("hidden");
+    });
+    qrModal.addEventListener("click", (e) => {
+      if (e.target === qrModal) qrModal.classList.add("hidden");
+    });
+
+    // Initialize player controller
+    initPlayerController(sessionCode, {
+      nowPlaying: document.getElementById("now-playing"),
+      queueList: document.getElementById("queue-list"),
+      skipBtn: document.getElementById("skip-btn"),
+      endSessionBtn: document.getElementById("end-session-btn"),
+      participantCount: document.getElementById("participant-count")
+    });
+
+    // Hide placeholder when a video starts playing
+    const placeholder = document.getElementById("player-placeholder");
+    const observer = new MutationObserver(() => {
+      const iframe = document.querySelector("#youtube-player iframe");
+      if (iframe) {
+        placeholder.classList.add("hidden");
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.getElementById("youtube-player"), { childList: true });
+  </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+/* Hide reCAPTCHA badge (required: must show text attribution instead) */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+
+/* YouTube player container */
+#youtube-player {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+#youtube-player iframe {
+  width: 100%;
+  height: 100%;
+}
+
+/* Pulse animation for now playing indicator */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Line clamp utility (fallback for older browsers) */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* QR code styling */
+.qr-container canvas,
+.qr-container img {
+  border-radius: 0.5rem;
+}
+
+/* Scrollbar styling for queue */
+.queue-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.queue-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.queue-scroll::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 2px;
+}
+
+/* Toast animation */
+.toast-enter {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

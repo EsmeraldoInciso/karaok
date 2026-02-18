@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote — KaraOK</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex flex-col">
+
+  <!-- Top Bar -->
+  <nav class="flex items-center justify-between px-4 py-3 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-10">
+    <div class="flex items-center gap-2">
+      <span class="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">KaraOK</span>
+      <span class="text-xs text-gray-500 font-mono" id="session-code-display"></span>
+    </div>
+    <button id="leave-btn" class="px-3 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-lg transition-colors">
+      Leave
+    </button>
+  </nav>
+
+  <!-- Now Playing -->
+  <div id="now-playing" class="px-4 py-3 bg-gray-900 border-b border-gray-800">
+    <p class="text-gray-500 text-sm">No song playing</p>
+  </div>
+
+  <!-- Search -->
+  <div class="px-4 py-3 sticky top-[57px] bg-gray-950 z-10 border-b border-gray-800">
+    <form id="search-form">
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" id="search-input"
+          class="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-purple-500 transition-colors text-sm"
+          placeholder="Search for a karaoke song...">
+      </div>
+    </form>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex border-b border-gray-800">
+    <button id="tab-search" class="flex-1 py-3 text-sm font-medium text-purple-400 border-b-2 border-purple-400 transition-colors">
+      Search Results
+    </button>
+    <button id="tab-queue" class="flex-1 py-3 text-sm font-medium text-gray-500 hover:text-gray-300 border-b-2 border-transparent transition-colors">
+      Queue
+    </button>
+  </div>
+
+  <!-- Content -->
+  <main class="flex-1 overflow-y-auto">
+    <!-- Search Results -->
+    <div id="search-results" class="p-4 space-y-3">
+      <p class="text-gray-500 text-center py-8 text-sm">Search for a song to add to the queue</p>
+    </div>
+
+    <!-- Queue List -->
+    <div id="queue-list" class="p-4 space-y-2 hidden">
+      <p class="text-gray-500 text-center py-4 text-sm">Queue is empty. Search for a song!</p>
+    </div>
+  </main>
+
+  <script type="module">
+    import { requireAuth } from "../js/auth.js";
+    import { getSessionCodeFromUrl, joinKaraokeSession } from "../js/session-manager.js";
+    import { getSession, removeParticipant } from "../js/firebase-client.js";
+    import { initRemoteController } from "../js/remote-controller.js";
+    import { BASE_URL } from "../js/config.js";
+
+    const user = await requireAuth();
+    if (!user) throw new Error("Not authenticated");
+
+    const sessionCode = getSessionCodeFromUrl();
+    if (!sessionCode) {
+      window.location.href = `${BASE_URL}/dashboard/`;
+      throw new Error("No session code");
+    }
+
+    // Validate and join session
+    const session = await getSession(sessionCode);
+    if (!session || !session.isActive) {
+      alert("Session not found or has ended.");
+      window.location.href = `${BASE_URL}/dashboard/`;
+      throw new Error("Invalid session");
+    }
+
+    // Auto-join as participant (idempotent — setDoc with merge handles re-joins)
+    try {
+      await joinKaraokeSession(sessionCode, user);
+    } catch {
+      // Already joined, that's fine
+    }
+
+    // Display session code
+    document.getElementById("session-code-display").textContent = `#${sessionCode}`;
+
+    // Initialize remote controller
+    initRemoteController(sessionCode, user, {
+      searchInput: document.getElementById("search-input"),
+      searchForm: document.getElementById("search-form"),
+      searchResults: document.getElementById("search-results"),
+      queueList: document.getElementById("queue-list"),
+      nowPlaying: document.getElementById("now-playing")
+    });
+
+    // Tab switching
+    const tabSearch = document.getElementById("tab-search");
+    const tabQueue = document.getElementById("tab-queue");
+    const searchResults = document.getElementById("search-results");
+    const queueList = document.getElementById("queue-list");
+
+    tabSearch.addEventListener("click", () => {
+      tabSearch.classList.add("text-purple-400", "border-purple-400");
+      tabSearch.classList.remove("text-gray-500", "border-transparent");
+      tabQueue.classList.remove("text-purple-400", "border-purple-400");
+      tabQueue.classList.add("text-gray-500", "border-transparent");
+      searchResults.classList.remove("hidden");
+      queueList.classList.add("hidden");
+    });
+
+    tabQueue.addEventListener("click", () => {
+      tabQueue.classList.add("text-purple-400", "border-purple-400");
+      tabQueue.classList.remove("text-gray-500", "border-transparent");
+      tabSearch.classList.remove("text-purple-400", "border-purple-400");
+      tabSearch.classList.add("text-gray-500", "border-transparent");
+      queueList.classList.remove("hidden");
+      searchResults.classList.add("hidden");
+    });
+
+    // Leave session
+    document.getElementById("leave-btn").addEventListener("click", async () => {
+      if (confirm("Leave this session?")) {
+        await removeParticipant(sessionCode, user.uid);
+        window.location.href = `${BASE_URL}/dashboard/`;
+      }
+    });
+  </script>
+</body>
+</html>

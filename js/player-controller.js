@@ -1,0 +1,176 @@
+import { initYouTubePlayer, loadVideo, stopVideo } from "./youtube-api.js";
+import {
+  updateQueueItemStatus,
+  removeQueueItem,
+  onQueueChanged,
+  onParticipantsChanged
+} from "./firebase-client.js";
+import { endKaraokeSession } from "./session-manager.js";
+import { appUrl } from "./links.js";
+
+let currentSessionCode = null;
+let currentSong = null;
+let queue = [];
+let isPlaying = false;
+let unsubscribeQueue = null;
+let unsubscribeParticipants = null;
+
+// DOM references (set during init)
+let elements = {};
+
+function initPlayerController(sessionCode, domElements) {
+  currentSessionCode = sessionCode;
+  elements = domElements;
+
+  // Initialize YouTube player
+  initYouTubePlayer("youtube-player", onPlayerStateChange);
+
+  // Listen for queue changes
+  unsubscribeQueue = onQueueChanged(sessionCode, (songs) => {
+    queue = songs;
+    renderQueue();
+    playNextIfIdle();
+  });
+
+  // Listen for participant changes
+  if (elements.participantCount) {
+    unsubscribeParticipants = onParticipantsChanged(sessionCode, (participants) => {
+      elements.participantCount.textContent = participants.length;
+    });
+  }
+
+  // Host controls
+  if (elements.skipBtn) {
+    elements.skipBtn.addEventListener("click", skipCurrentSong);
+  }
+  if (elements.endSessionBtn) {
+    elements.endSessionBtn.addEventListener("click", handleEndSession);
+  }
+}
+
+function onPlayerStateChange(event) {
+  // YT.PlayerState.ENDED === 0
+  if (event.data === 0) {
+    markCurrentAsPlayed();
+  }
+}
+
+async function markCurrentAsPlayed() {
+  if (currentSong) {
+    await updateQueueItemStatus(currentSessionCode, currentSong.id, "played");
+    currentSong = null;
+    isPlaying = false;
+    playNextIfIdle();
+  }
+}
+
+async function playNextIfIdle() {
+  if (isPlaying || !queue.length) {
+    updateNowPlaying();
+    return;
+  }
+
+  // Find first queued song (not already playing)
+  const nextSong = queue.find((s) => s.status === "queued");
+  if (!nextSong) {
+    updateNowPlaying();
+    return;
+  }
+
+  isPlaying = true;
+  currentSong = nextSong;
+
+  // Hide placeholder when a song starts
+  const placeholder = document.getElementById("player-placeholder");
+  if (placeholder) placeholder.classList.add("hidden");
+
+  await updateQueueItemStatus(currentSessionCode, nextSong.id, "playing");
+  await loadVideo(nextSong.videoId);
+  updateNowPlaying();
+}
+
+async function skipCurrentSong() {
+  if (currentSong) {
+    await updateQueueItemStatus(currentSessionCode, currentSong.id, "skipped");
+    currentSong = null;
+    isPlaying = false;
+    stopVideo();
+    playNextIfIdle();
+  }
+}
+
+async function removeFromQueue(queueItemId) {
+  await removeQueueItem(currentSessionCode, queueItemId);
+}
+
+async function handleEndSession() {
+  if (confirm("Are you sure you want to end this session?")) {
+    await endKaraokeSession(currentSessionCode);
+    window.location.href = appUrl("/dashboard/");
+  }
+}
+
+function updateNowPlaying() {
+  if (!elements.nowPlaying) return;
+
+  if (currentSong) {
+    elements.nowPlaying.innerHTML = `
+      <p class="text-sm text-gray-400">Now Playing</p>
+      <p class="text-lg font-semibold text-white truncate">${escapeHtml(currentSong.title)}</p>
+      <p class="text-sm text-gray-400">Requested by ${escapeHtml(currentSong.addedByName)}</p>
+    `;
+  } else {
+    elements.nowPlaying.innerHTML = `
+      <p class="text-gray-400">No song playing. Queue a song to get started!</p>
+    `;
+  }
+}
+
+function renderQueue() {
+  if (!elements.queueList) return;
+
+  const queuedSongs = queue.filter((s) => s.status === "queued");
+
+  if (!queuedSongs.length) {
+    elements.queueList.innerHTML = `
+      <p class="text-gray-500 text-center py-4">Queue is empty</p>
+    `;
+    return;
+  }
+
+  elements.queueList.innerHTML = queuedSongs
+    .map(
+      (song, index) => `
+      <div class="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
+        <span class="text-gray-500 font-mono text-sm w-6 text-center">${index + 1}</span>
+        <img src="${escapeHtml(song.thumbnailUrl)}" alt="" class="w-16 h-12 object-cover rounded">
+        <div class="flex-1 min-w-0">
+          <p class="text-white text-sm truncate">${escapeHtml(song.title)}</p>
+          <p class="text-gray-400 text-xs">${escapeHtml(song.addedByName)}</p>
+        </div>
+        <button onclick="window.playerRemoveFromQueue('${song.id}')" class="text-red-400 hover:text-red-300 p-1" title="Remove">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    `
+    )
+    .join("");
+}
+
+// Expose for inline onclick handlers
+window.playerRemoveFromQueue = removeFromQueue;
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text || "";
+  return div.innerHTML;
+}
+
+function cleanup() {
+  if (unsubscribeQueue) unsubscribeQueue();
+  if (unsubscribeParticipants) unsubscribeParticipants();
+}
+
+export { initPlayerController, cleanup };
