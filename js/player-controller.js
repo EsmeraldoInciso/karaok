@@ -91,7 +91,6 @@ function initPlayerController(sessionCode, domElements) {
 function onPlayerStateChange(event) {
   // YT.PlayerState.ENDED === 0
   if (event.data === 0) {
-    clearEndScreenCover();
     markCurrentAsPlayed();
   }
 
@@ -115,13 +114,6 @@ function startEndScreenMonitor() {
 
     const remaining = duration - current;
 
-    // YouTube end screen cards appear in the last ~20 seconds
-    if (remaining <= 20) {
-      playerEl.classList.add("hide-endscreen");
-    } else {
-      playerEl.classList.remove("hide-endscreen");
-    }
-
     // Show overlay with up-next info 10 seconds before end
     if (remaining <= 10 && remaining > 0) {
       showOverlay();
@@ -134,11 +126,6 @@ function stopEndScreenMonitor() {
     clearInterval(endScreenTimer);
     endScreenTimer = null;
   }
-}
-
-function clearEndScreenCover() {
-  const playerEl = document.getElementById("youtube-player");
-  if (playerEl) playerEl.classList.remove("hide-endscreen");
 }
 
 function updatePlayPauseIcon(state) {
@@ -201,9 +188,6 @@ async function playNextIfIdle() {
   // Hide placeholder when a song starts
   const placeholder = document.getElementById("player-placeholder");
   if (placeholder) placeholder.classList.add("hidden");
-
-  // Clear any end screen cover from previous video
-  clearEndScreenCover();
 
   await updateQueueItemStatus(currentSessionCode, nextSong.id, "playing");
   await loadVideo(nextSong.videoId);
