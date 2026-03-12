@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — KaraOK</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex flex-col">
+
+  <!-- Navigation -->
+  <nav class="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto w-full">
+    <div class="flex items-center gap-3">
+      <a data-link="/" class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+        KaraOK
+      </a>
+      <span class="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">Admin</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <a data-link="/dashboard/" class="text-sm text-gray-400 hover:text-white transition-colors">Dashboard</a>
+      <span id="user-name" class="text-sm text-gray-400 hidden sm:inline"></span>
+      <button id="logout-btn" class="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-lg transition-colors">
+        Log Out
+      </button>
+    </div>
+  </nav>
+
+  <!-- Loading State -->
+  <div id="loading" class="flex-1 flex items-center justify-center">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+  </div>
+
+  <!-- Admin Content -->
+  <main id="admin-content" class="hidden flex-1 max-w-6xl mx-auto w-full px-6 py-8">
+
+    <!-- Stats Cards -->
+    <section id="stats-section" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div class="w-10 h-10 bg-purple-600/20 rounded-xl flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold" id="stat-users">—</p>
+        <p class="text-sm text-gray-400">Total Users</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div class="w-10 h-10 bg-pink-600/20 rounded-xl flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold" id="stat-sessions">—</p>
+        <p class="text-sm text-gray-400">Total Sessions</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div class="w-10 h-10 bg-green-600/20 rounded-xl flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold" id="stat-active">—</p>
+        <p class="text-sm text-gray-400">Active Sessions</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div class="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold" id="stat-songs">—</p>
+        <p class="text-sm text-gray-400">Songs Today</p>
+      </div>
+    </section>
+
+    <!-- Tab Navigation -->
+    <div class="flex border-b border-gray-800 mb-6">
+      <button id="tab-users" class="px-4 py-3 text-sm font-medium border-b-2 border-purple-500 text-white transition-colors">Users</button>
+      <button id="tab-sessions" class="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">Sessions</button>
+    </div>
+
+    <!-- Users Panel -->
+    <section id="users-panel">
+      <div class="mb-4">
+        <input type="text" id="user-search" placeholder="Search by name or email..."
+          class="w-full sm:w-80 px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-sm focus:outline-none focus:border-purple-500 transition-colors">
+      </div>
+      <div id="users-list" class="space-y-2">
+        <p class="text-gray-500 text-sm">Loading users...</p>
+      </div>
+    </section>
+
+    <!-- Sessions Panel -->
+    <section id="sessions-panel" class="hidden">
+      <div class="flex gap-2 mb-4">
+        <button class="session-filter px-4 py-2 text-sm rounded-lg bg-purple-600 text-white transition-colors" data-filter="all">All</button>
+        <button class="session-filter px-4 py-2 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-white transition-colors" data-filter="active">Active</button>
+        <button class="session-filter px-4 py-2 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-white transition-colors" data-filter="inactive">Inactive</button>
+      </div>
+      <div id="sessions-list" class="space-y-2">
+        <p class="text-gray-500 text-sm">Loading sessions...</p>
+      </div>
+    </section>
+
+    <!-- Session Detail Modal -->
+    <div id="session-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto mx-4 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold" id="modal-title">Session Details</h2>
+          <button id="modal-close" class="text-gray-400 hover:text-white transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Session Info -->
+        <div id="modal-info" class="mb-6 space-y-1 text-sm text-gray-400"></div>
+
+        <!-- Action Buttons -->
+        <div id="modal-actions" class="mb-6"></div>
+
+        <!-- Participants -->
+        <div class="mb-6">
+          <h3 class="text-sm font-semibold text-gray-300 mb-2">Participants</h3>
+          <div id="modal-participants" class="space-y-2"></div>
+        </div>
+
+        <!-- Queue -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-300 mb-2">Queue</h3>
+          <div id="modal-queue" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module">
+    import {
+      requireAdmin,
+      getAdminStats,
+      getAllUsers,
+      getAllSessions,
+      getSessionDetails,
+      forceEndSession,
+      deleteQueueItem,
+      kickParticipant
+    } from "../js/admin.js";
+    import { logOut } from "../js/auth.js";
+    import { BASE_URL } from "../js/config.js";
+    import { resolveLinks } from "../js/links.js";
+
+    resolveLinks();
+
+    const user = await requireAdmin();
+    if (!user) throw new Error("Not admin");
+
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("admin-content").classList.remove("hidden");
+    document.getElementById("user-name").textContent = user.displayName || user.email;
+
+    // --- State ---
+    let allUsers = [];
+    let allSessions = [];
+    let currentFilter = "all";
+
+    // --- Logout ---
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await logOut();
+      window.location.href = `${BASE_URL}/`;
+    });
+
+    // --- Stats ---
+    async function loadStats() {
+      const stats = await getAdminStats();
+      document.getElementById("stat-users").textContent = stats.totalUsers;
+      document.getElementById("stat-sessions").textContent = stats.totalSessions;
+      document.getElementById("stat-active").textContent = stats.activeSessions;
+      document.getElementById("stat-songs").textContent = stats.songsQueuedToday;
+    }
+
+    // --- Relative Time ---
+    function relativeTime(timestamp) {
+      if (!timestamp) return "Never";
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (seconds < 60) return "Just now";
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      return `${Math.floor(seconds / 86400)}d ago`;
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return "—";
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+
+    // --- Users ---
+    async function loadUsers() {
+      allUsers = await getAllUsers();
+      renderUsers(allUsers);
+    }
+
+    function renderUsers(users) {
+      const container = document.getElementById("users-list");
+      if (users.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-sm">No users found.</p>`;
+        return;
+      }
+
+      container.innerHTML = users.map((u) => `
+        <div class="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+          <div class="min-w-0 flex-1">
+            <p class="font-medium truncate">${escapeHtml(u.displayName || "Anonymous")}</p>
+            <p class="text-sm text-gray-400 truncate">${escapeHtml(u.email || "—")}</p>
+          </div>
+          <div class="text-right ml-4 shrink-0">
+            <p class="text-xs text-gray-500">${relativeTime(u.lastActive)}</p>
+            ${u.isAdmin ? '<span class="text-xs bg-purple-600/20 text-purple-400 px-2 py-0.5 rounded-full">Admin</span>' : ""}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // User search
+    let searchTimeout;
+    document.getElementById("user-search").addEventListener("input", (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const term = e.target.value.trim().toLowerCase();
+        if (!term) {
+          renderUsers(allUsers);
+          return;
+        }
+        const filtered = allUsers.filter((u) =>
+          (u.displayName || "").toLowerCase().includes(term) ||
+          (u.email || "").toLowerCase().includes(term)
+        );
+        renderUsers(filtered);
+      }, 300);
+    });
+
+    // --- Sessions ---
+    async function loadSessions() {
+      allSessions = await getAllSessions(currentFilter === "all" ? null : currentFilter);
+      renderSessions(allSessions);
+    }
+
+    function renderSessions(sessions) {
+      const container = document.getElementById("sessions-list");
+      if (sessions.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-sm">No sessions found.</p>`;
+        return;
+      }
+
+      const now = Date.now();
+
+      container.innerHTML = sessions.map((s) => {
+        const isExpired = s.expireAt && (s.expireAt.toDate ? s.expireAt.toDate() : new Date(s.expireAt)).getTime() < now;
+        const statusBadge = s.isActive
+          ? `<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Active</span>`
+          : `<span class="text-xs bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full">Ended</span>`;
+        const expiredBadge = isExpired && s.isActive
+          ? `<span class="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full ml-1">Expired</span>`
+          : "";
+
+        return `
+          <button onclick="window.openSessionDetail('${s.id}')"
+            class="w-full text-left flex items-center justify-between bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl px-4 py-3 transition-colors">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-mono font-bold text-purple-400">${escapeHtml(s.id)}</span>
+                ${statusBadge}${expiredBadge}
+              </div>
+              <p class="text-sm text-gray-400">Host: ${escapeHtml(s.hostName)} · ${s.participantCount} participants · ${s.queueCount} songs</p>
+            </div>
+            <div class="text-right ml-4 shrink-0">
+              <p class="text-xs text-gray-500">${formatDate(s.createdAt)}</p>
+            </div>
+          </button>
+        `;
+      }).join("");
+    }
+
+    // Session filter buttons
+    document.querySelectorAll(".session-filter").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".session-filter").forEach((b) => {
+          b.className = "session-filter px-4 py-2 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-white transition-colors";
+        });
+        btn.className = "session-filter px-4 py-2 text-sm rounded-lg bg-purple-600 text-white transition-colors";
+        currentFilter = btn.dataset.filter;
+        loadSessions();
+      });
+    });
+
+    // --- Session Detail Modal ---
+    const modal = document.getElementById("session-modal");
+
+    window.openSessionDetail = async (sessionCode) => {
+      modal.classList.remove("hidden");
+      document.getElementById("modal-title").textContent = `Session: ${sessionCode}`;
+      document.getElementById("modal-info").innerHTML = `<p class="text-gray-500">Loading...</p>`;
+      document.getElementById("modal-actions").innerHTML = "";
+      document.getElementById("modal-participants").innerHTML = "";
+      document.getElementById("modal-queue").innerHTML = "";
+
+      const details = await getSessionDetails(sessionCode);
+      if (!details) {
+        document.getElementById("modal-info").innerHTML = `<p class="text-red-400">Session not found.</p>`;
+        return;
+      }
+
+      const { session, participants, queue } = details;
+
+      // Info
+      document.getElementById("modal-info").innerHTML = `
+        <p>Host: <span class="text-white">${escapeHtml(participants.find((p) => p.isHost)?.displayName || "Unknown")}</span></p>
+        <p>Created: <span class="text-white">${formatDate(session.createdAt)}</span></p>
+        <p>Status: ${session.isActive ? '<span class="text-green-400">Active</span>' : '<span class="text-gray-400">Ended</span>'}</p>
+        <p>Participants: <span class="text-white">${participants.length}</span> · Songs: <span class="text-white">${queue.length}</span></p>
+      `;
+
+      // Actions
+      if (session.isActive) {
+        document.getElementById("modal-actions").innerHTML = `
+          <button id="force-end-btn" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-500 rounded-xl font-medium transition-colors">
+            Force End Session
+          </button>
+        `;
+        document.getElementById("force-end-btn").addEventListener("click", async () => {
+          if (!confirm(`End session ${sessionCode}?`)) return;
+          await forceEndSession(sessionCode);
+          modal.classList.add("hidden");
+          loadSessions();
+          loadStats();
+        });
+      }
+
+      // Participants
+      const participantsEl = document.getElementById("modal-participants");
+      if (participants.length === 0) {
+        participantsEl.innerHTML = `<p class="text-gray-500 text-sm">No participants.</p>`;
+      } else {
+        participantsEl.innerHTML = participants.map((p) => `
+          <div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+            <div>
+              <span class="text-sm">${escapeHtml(p.displayName)}</span>
+              ${p.isHost ? '<span class="text-xs text-purple-400 ml-1">(Host)</span>' : ""}
+            </div>
+            ${!p.isHost && session.isActive ? `
+              <button onclick="window.handleKick('${sessionCode}', '${p.id}')"
+                class="text-xs text-red-400 hover:text-red-300 transition-colors">Kick</button>
+            ` : ""}
+          </div>
+        `).join("");
+      }
+
+      // Queue
+      const queueEl = document.getElementById("modal-queue");
+      if (queue.length === 0) {
+        queueEl.innerHTML = `<p class="text-gray-500 text-sm">Queue is empty.</p>`;
+      } else {
+        const statusColors = {
+          queued: "text-blue-400",
+          playing: "text-green-400",
+          played: "text-gray-500",
+          skipped: "text-yellow-400"
+        };
+        queueEl.innerHTML = queue.map((q) => `
+          <div class="flex items-center gap-3 bg-gray-800 rounded-lg px-3 py-2">
+            <img src="${escapeHtml(q.thumbnailUrl || "")}" alt="" class="w-12 h-9 rounded object-cover bg-gray-700 shrink-0">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm truncate">${escapeHtml(q.title)}</p>
+              <p class="text-xs text-gray-500">${escapeHtml(q.addedByName || "Unknown")} · <span class="${statusColors[q.status] || "text-gray-400"}">${q.status}</span></p>
+            </div>
+            <button onclick="window.handleDeleteQueueItem('${sessionCode}', '${q.id}')"
+              class="text-xs text-red-400 hover:text-red-300 transition-colors shrink-0">Remove</button>
+          </div>
+        `).join("");
+      }
+    };
+
+    window.handleKick = async (sessionCode, userId) => {
+      if (!confirm("Kick this participant?")) return;
+      await kickParticipant(sessionCode, userId);
+      window.openSessionDetail(sessionCode);
+    };
+
+    window.handleDeleteQueueItem = async (sessionCode, queueItemId) => {
+      if (!confirm("Remove this song from the queue?")) return;
+      await deleteQueueItem(sessionCode, queueItemId);
+      window.openSessionDetail(sessionCode);
+    };
+
+    document.getElementById("modal-close").addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.classList.add("hidden");
+    });
+
+    // --- Tab Switching ---
+    document.getElementById("tab-users").addEventListener("click", () => {
+      document.getElementById("tab-users").className = "px-4 py-3 text-sm font-medium border-b-2 border-purple-500 text-white transition-colors";
+      document.getElementById("tab-sessions").className = "px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white transition-colors";
+      document.getElementById("users-panel").classList.remove("hidden");
+      document.getElementById("sessions-panel").classList.add("hidden");
+    });
+
+    document.getElementById("tab-sessions").addEventListener("click", () => {
+      document.getElementById("tab-sessions").className = "px-4 py-3 text-sm font-medium border-b-2 border-purple-500 text-white transition-colors";
+      document.getElementById("tab-users").className = "px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white transition-colors";
+      document.getElementById("sessions-panel").classList.remove("hidden");
+      document.getElementById("users-panel").classList.add("hidden");
+      if (allSessions.length === 0) loadSessions();
+    });
+
+    // --- HTML Escaping ---
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str || "";
+      return div.innerHTML;
+    }
+
+    // --- Init ---
+    loadStats();
+    loadUsers();
+  </script>
+</body>
+</html>
