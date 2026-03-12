@@ -1,4 +1,4 @@
-import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState, isAdPlaying, isUsingHtmlPlayer, mutePlayer, unmutePlayer } from "./youtube-api.js";
+import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState, isAdPlaying, isUsingHtmlPlayer, mutePlayer, unmutePlayer, setPlaybackRate, seekToEnd } from "./youtube-api.js";
 import {
   updateQueueItemStatus,
   removeQueueItem,
@@ -29,6 +29,7 @@ let endScreenTimer = null;
 let adCheckTimer = null;
 let adCurrentlyShowing = false;
 let wasMutedBeforeAd = false;
+let adSkipAttempts = 0;
 
 function initPlayerController(sessionCode, domElements) {
   currentSessionCode = sessionCode;
@@ -158,18 +159,30 @@ function startAdMonitor() {
     const adOverlay = document.getElementById("ad-overlay");
 
     if (adPlaying && !adCurrentlyShowing) {
-      // Ad just started
+      // Ad just started — mute + speed up to skip through it fast
       adCurrentlyShowing = true;
+      adSkipAttempts = 0;
       wasMutedBeforeAd = false;
       mutePlayer();
+      setPlaybackRate(16); // Max speed — ad flies by in ~1-2 seconds
+      seekToEnd(); // Try to jump to end of ad
       if (adOverlay) adOverlay.classList.remove("hidden");
-      console.log("Ad detected — muted");
+      console.log("Ad detected — muted + speed 16x + seeking to end");
+    } else if (adPlaying && adCurrentlyShowing) {
+      // Ad still playing — keep trying to skip
+      adSkipAttempts++;
+      if (adSkipAttempts % 2 === 0) {
+        seekToEnd(); // Retry seeking past the ad every ~1 second
+      }
+      setPlaybackRate(16); // Ensure speed stays at 16x
     } else if (!adPlaying && adCurrentlyShowing) {
-      // Ad just ended
+      // Ad ended — restore normal playback
       adCurrentlyShowing = false;
+      adSkipAttempts = 0;
+      setPlaybackRate(1); // Restore normal speed
       if (!wasMutedBeforeAd) unmutePlayer();
       if (adOverlay) adOverlay.classList.add("hidden");
-      console.log("Ad ended — unmuted");
+      console.log("Ad ended — restored normal playback");
     }
   }, 500);
 }
@@ -179,7 +192,11 @@ function stopAdMonitor() {
     clearInterval(adCheckTimer);
     adCheckTimer = null;
   }
+  if (adCurrentlyShowing) {
+    setPlaybackRate(1); // Restore normal speed if stopping mid-ad
+  }
   adCurrentlyShowing = false;
+  adSkipAttempts = 0;
 }
 
 function updatePlayPauseIcon(state) {

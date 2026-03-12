@@ -558,6 +558,24 @@ function isPlayerMuted() {
   return player ? player.isMuted() : false;
 }
 
+// --- Ad speed-up: fast-forward through ads ---
+
+function setPlaybackRate(rate) {
+  if (player) {
+    try { player.setPlaybackRate(rate); } catch {}
+  }
+}
+
+function seekToEnd() {
+  // Try to skip ad by seeking to end of current ad
+  if (player) {
+    try {
+      const duration = player.getDuration();
+      if (duration > 0) player.seekTo(duration, true);
+    } catch {}
+  }
+}
+
 export {
   searchKaraoke,
   extractVideoId,
@@ -574,5 +592,7 @@ export {
   isUsingHtmlPlayer,
   mutePlayer,
   unmutePlayer,
-  isPlayerMuted
+  isPlayerMuted,
+  setPlaybackRate,
+  seekToEnd
 };
