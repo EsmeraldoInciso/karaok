@@ -294,6 +294,7 @@ function onFullscreenChange() {
   const expandIcon = document.getElementById("fs-expand-icon");
   const shrinkIcon = document.getElementById("fs-shrink-icon");
   const overlayNowPlaying = document.getElementById("overlay-now-playing");
+  const overlayRoomCode = document.getElementById("overlay-room-code");
 
   if (expandIcon && shrinkIcon) {
     expandIcon.classList.toggle("hidden", isFs);
@@ -303,6 +304,15 @@ function onFullscreenChange() {
   // Show now-playing info in fullscreen overlay (since bottom bar is hidden)
   if (overlayNowPlaying) {
     overlayNowPlaying.classList.toggle("hidden", !isFs);
+  }
+
+  // Show room code in fullscreen overlay
+  if (overlayRoomCode) {
+    overlayRoomCode.classList.toggle("hidden", !isFs);
+    if (isFs) {
+      const codeText = document.getElementById("overlay-room-code-text");
+      if (codeText) codeText.textContent = currentSessionCode || "";
+    }
   }
 
   // Show overlay briefly when entering/exiting fullscreen

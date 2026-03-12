@@ -49,15 +49,26 @@
 
         <!-- Fullscreen Overlay: Up Next + Skip (auto-hides on inactivity) -->
         <div id="player-overlay" class="absolute inset-0 z-20 pointer-events-none opacity-0 transition-opacity duration-300">
-          <!-- Up Next Bar (top) -->
-          <div id="overlay-up-next" class="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/70 to-transparent pointer-events-auto hidden">
-            <div class="flex items-center gap-3 max-w-lg">
-              <span class="text-xs text-gray-300 uppercase tracking-wider font-semibold shrink-0">Up Next</span>
-              <img id="overlay-next-thumb" class="w-10 h-7 object-cover rounded hidden" alt="">
-              <div class="min-w-0">
-                <p id="overlay-next-title" class="text-sm text-white truncate"></p>
-                <p id="overlay-next-by" class="text-xs text-gray-400 truncate"></p>
+          <!-- Top Bar (Up Next left, Room Code right) -->
+          <div class="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/70 to-transparent pointer-events-auto flex items-start justify-between">
+            <!-- Up Next (left) -->
+            <div id="overlay-up-next" class="hidden">
+              <div class="flex items-center gap-3 max-w-lg">
+                <span class="text-xs text-gray-300 uppercase tracking-wider font-semibold shrink-0">Up Next</span>
+                <img id="overlay-next-thumb" class="w-10 h-7 object-cover rounded hidden" alt="">
+                <div class="min-w-0">
+                  <p id="overlay-next-title" class="text-sm text-white truncate"></p>
+                  <p id="overlay-next-by" class="text-xs text-gray-400 truncate"></p>
+                </div>
               </div>
+            </div>
+
+            <!-- Room Code (right, visible in fullscreen) -->
+            <div id="overlay-room-code" class="hidden flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20 ml-auto">
+              <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+              </svg>
+              <span id="overlay-room-code-text" class="text-sm font-mono font-semibold tracking-wider text-white"></span>
             </div>
           </div>
 
