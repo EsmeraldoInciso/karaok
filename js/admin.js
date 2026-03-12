@@ -44,7 +44,7 @@ async function getAdminStats() {
     totalUsers: usersCount.data().count,
     totalSessions: sessionsCount.data().count,
     activeSessions: activeCount.data().count,
-    songsQueuedToday
+    songsQueuedToday: songsToday
   };
 }
 
@@ -99,20 +99,24 @@ async function getAllSessions(filter) {
 
   // Fetch participant and queue counts for each session
   const enriched = await Promise.all(sessions.map(async (session) => {
-    const [participantsSnap, queueSnap] = await Promise.all([
-      getDocs(collection(db, "sessions", session.id, "participants")),
-      getDocs(collection(db, "sessions", session.id, "queue"))
-    ]);
+    try {
+      const [participantsSnap, queueSnap] = await Promise.all([
+        getDocs(collection(db, "sessions", session.id, "participants")),
+        getDocs(collection(db, "sessions", session.id, "queue"))
+      ]);
 
-    // Find host name from participants
-    const hostParticipant = participantsSnap.docs.find((d) => d.data().isHost);
+      const hostParticipant = participantsSnap.docs.find((d) => d.data().isHost);
 
-    return {
-      ...session,
-      participantCount: participantsSnap.size,
-      queueCount: queueSnap.size,
-      hostName: hostParticipant?.data().displayName || "Unknown"
-    };
+      return {
+        ...session,
+        participantCount: participantsSnap.size,
+        queueCount: queueSnap.size,
+        hostName: hostParticipant?.data().displayName || "Unknown"
+      };
+    } catch {
+      // Queue read may fail if Firestore rules haven't been deployed yet
+      return { ...session, participantCount: 0, queueCount: 0, hostName: "Unknown" };
+    }
   }));
 
   return enriched;
