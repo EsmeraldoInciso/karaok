@@ -273,6 +273,7 @@ function initYouTubePlayer(elementId, onStateChange, onError) {
         events: {
           onReady: () => resolve(player),
           onStateChange: (event) => {
+            console.log("[YT] State change:", event.data, "activePlayer:", activePlayer);
             if (activePlayer === "youtube" && stateChangeCallback) stateChangeCallback(event);
           },
           onError: (event) => {

@@ -107,13 +107,16 @@ function initPlayerController(sessionCode, domElements) {
 }
 
 function onPlayerStateChange(event) {
+  console.log("[PlayerController] State change:", event.data);
+
   // YT.PlayerState.ENDED === 0
   if (event.data === 0) {
     markCurrentAsPlayed();
   }
 
-  // Start monitoring for end screen and ads when playing
-  if (event.data === 1) {
+  // Start monitoring for end screen and ads when playing or buffering
+  // Ads can trigger state 1 (playing) or 3 (buffering) before the real video
+  if (event.data === 1 || event.data === 3) {
     startEndScreenMonitor();
     startAdMonitor();
   } else if (event.data === 0 || event.data === 5) {
@@ -272,6 +275,9 @@ async function playNextIfIdle() {
 
   await updateQueueItemStatus(currentSessionCode, nextSong.id, "playing");
   await loadVideo(nextSong.videoId);
+  // Start ad monitor immediately after video loads (don't wait for state change)
+  console.log("[PlayerController] Video loaded, starting ad monitor immediately");
+  startAdMonitor();
   updateNowPlaying();
 }
 
