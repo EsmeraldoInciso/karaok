@@ -154,9 +154,17 @@ function startAdMonitor() {
   stopAdMonitor();
   // No ads when using Piped HTML5 player
   if (isUsingHtmlPlayer()) return;
+
+  let debugCounter = 0;
   adCheckTimer = setInterval(() => {
     const adPlaying = isAdPlaying();
     const adOverlay = document.getElementById("ad-overlay");
+
+    // Debug logging every 5 seconds to help diagnose detection
+    debugCounter++;
+    if (debugCounter % 10 === 1) {
+      console.log("[Ad Monitor] checking... adPlaying:", adPlaying, "adCurrentlyShowing:", adCurrentlyShowing);
+    }
 
     if (adPlaying && !adCurrentlyShowing) {
       // Ad just started — mute + speed up to skip through it fast
