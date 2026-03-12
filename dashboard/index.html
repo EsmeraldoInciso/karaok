@@ -16,6 +16,13 @@
       KaraOK
     </a>
     <div class="flex items-center gap-4">
+      <a id="admin-link" data-link="/admin/" class="hidden px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 border border-purple-500/30 hover:border-purple-500/60 rounded-lg transition-colors flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Admin
+      </a>
       <span id="user-name" class="text-sm text-gray-400"></span>
       <button id="logout-btn" class="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-lg transition-colors">
         Log Out
@@ -68,10 +75,11 @@
   </main>
 
   <script type="module">
-    import { requireAuth, logOut } from "../js/auth.js";
+    import { requireAuth, logOut, db } from "../js/auth.js";
     import { createKaraokeSession, joinKaraokeSession } from "../js/session-manager.js";
     import { BASE_URL, RECAPTCHA_SITE_KEY } from "../js/config.js";
     import { resolveLinks } from "../js/links.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
     resolveLinks();
 
@@ -88,6 +96,14 @@
     }
 
     document.getElementById("user-name").textContent = user.displayName || user.email;
+
+    // Show admin link if user is admin
+    getDoc(doc(db, "users", user.uid)).then((userDoc) => {
+      if (userDoc.exists() && userDoc.data().isAdmin === true) {
+        const adminLink = document.getElementById("admin-link");
+        if (adminLink) adminLink.classList.remove("hidden");
+      }
+    });
 
     const errorEl = document.getElementById("error-message");
     const loadingEl = document.getElementById("loading");
