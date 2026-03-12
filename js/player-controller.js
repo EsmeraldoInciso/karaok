@@ -1,4 +1,4 @@
-import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState, isAdPlaying, isUsingHtmlPlayer, mutePlayer, unmutePlayer, setPlaybackRate, seekToEnd } from "./youtube-api.js";
+import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState, isUsingHtmlPlayer } from "./youtube-api.js";
 import {
   updateQueueItemStatus,
   removeQueueItem,
@@ -24,12 +24,6 @@ const OVERLAY_HIDE_DELAY = 3000;
 
 // End screen detection timer
 let endScreenTimer = null;
-
-// Ad detection
-let adCheckTimer = null;
-let adCurrentlyShowing = false;
-let wasMutedBeforeAd = false;
-let adSkipAttempts = 0;
 
 function initPlayerController(sessionCode, domElements) {
   currentSessionCode = sessionCode;
@@ -104,24 +98,22 @@ function initPlayerController(sessionCode, domElements) {
     // Also show on touch for mobile
     playerContainer.addEventListener("touchstart", showOverlay, { passive: true });
   }
+
+  // Show ad blocker tip if not using Piped and not dismissed before
+  showAdBlockerTip();
 }
 
 function onPlayerStateChange(event) {
-  console.log("[PlayerController] State change:", event.data);
-
   // YT.PlayerState.ENDED === 0
   if (event.data === 0) {
     markCurrentAsPlayed();
   }
 
-  // Start monitoring for end screen and ads when playing or buffering
-  // Ads can trigger state 1 (playing) or 3 (buffering) before the real video
-  if (event.data === 1 || event.data === 3) {
+  // Start monitoring for end screen when playing
+  if (event.data === 1) {
     startEndScreenMonitor();
-    startAdMonitor();
   } else if (event.data === 0 || event.data === 5) {
     stopEndScreenMonitor();
-    stopAdMonitor();
   }
 
   updatePlayPauseIcon(event.data);
@@ -151,63 +143,27 @@ function stopEndScreenMonitor() {
   }
 }
 
-// --- Ad detection: mute + show overlay during ads ---
+// --- Ad blocker tip (one-time, dismissible) ---
 
-function startAdMonitor() {
-  stopAdMonitor();
-  // No ads when using Piped HTML5 player
-  if (isUsingHtmlPlayer()) return;
+function showAdBlockerTip() {
+  // Don't show if already dismissed or if using ad-free Piped player
+  if (localStorage.getItem("karaok-adblocker-tip-dismissed")) return;
 
-  let debugCounter = 0;
-  adCheckTimer = setInterval(() => {
-    const adPlaying = isAdPlaying();
-    const adOverlay = document.getElementById("ad-overlay");
+  // Wait a moment for the player to initialize, then check
+  setTimeout(() => {
+    if (isUsingHtmlPlayer()) return; // Piped is active, no ads
 
-    // Debug logging every 5 seconds to help diagnose detection
-    debugCounter++;
-    if (debugCounter % 10 === 1) {
-      console.log("[Ad Monitor] checking... adPlaying:", adPlaying, "adCurrentlyShowing:", adCurrentlyShowing);
+    const tip = document.getElementById("adblocker-tip");
+    if (tip) tip.classList.remove("hidden");
+
+    const dismissBtn = document.getElementById("dismiss-adblocker-tip");
+    if (dismissBtn) {
+      dismissBtn.addEventListener("click", () => {
+        tip.classList.add("hidden");
+        localStorage.setItem("karaok-adblocker-tip-dismissed", "1");
+      });
     }
-
-    if (adPlaying && !adCurrentlyShowing) {
-      // Ad just started — mute + speed up to skip through it fast
-      adCurrentlyShowing = true;
-      adSkipAttempts = 0;
-      wasMutedBeforeAd = false;
-      mutePlayer();
-      setPlaybackRate(16); // Max speed — ad flies by in ~1-2 seconds
-      seekToEnd(); // Try to jump to end of ad
-      if (adOverlay) adOverlay.classList.remove("hidden");
-      console.log("Ad detected — muted + speed 16x + seeking to end");
-    } else if (adPlaying && adCurrentlyShowing) {
-      // Ad still playing — keep trying to skip
-      adSkipAttempts++;
-      if (adSkipAttempts % 2 === 0) {
-        seekToEnd(); // Retry seeking past the ad every ~1 second
-      }
-      setPlaybackRate(16); // Ensure speed stays at 16x
-    } else if (!adPlaying && adCurrentlyShowing) {
-      // Ad ended — restore normal playback
-      adCurrentlyShowing = false;
-      adSkipAttempts = 0;
-      setPlaybackRate(1); // Restore normal speed
-      if (!wasMutedBeforeAd) unmutePlayer();
-      if (adOverlay) adOverlay.classList.add("hidden");
-      console.log("Ad ended — restored normal playback");
-    }
-  }, 500);
-}
-
-function stopAdMonitor() {
-  if (adCheckTimer) {
-    clearInterval(adCheckTimer);
-    adCheckTimer = null;
-  }
-  if (adCurrentlyShowing) {
-    setPlaybackRate(1); // Restore normal speed if stopping mid-ad
-  }
-  adCurrentlyShowing = false;
-  adSkipAttempts = 0;
+  }, 3000);
 }
 
 function updatePlayPauseIcon(state) {
@@ -275,9 +231,6 @@ async function playNextIfIdle() {
 
   await updateQueueItemStatus(currentSessionCode, nextSong.id, "playing");
   await loadVideo(nextSong.videoId);
-  // Start ad monitor immediately after video loads (don't wait for state change)
-  console.log("[PlayerController] Video loaded, starting ad monitor immediately");
-  startAdMonitor();
   updateNowPlaying();
 }
 

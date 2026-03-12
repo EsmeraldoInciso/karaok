@@ -273,7 +273,6 @@ function initYouTubePlayer(elementId, onStateChange, onError) {
         events: {
           onReady: () => resolve(player),
           onStateChange: (event) => {
-            console.log("[YT] State change:", event.data, "activePlayer:", activePlayer);
             if (activePlayer === "youtube" && stateChangeCallback) stateChangeCallback(event);
           },
           onError: (event) => {
@@ -403,7 +402,6 @@ async function loadVideo(videoId) {
           });
         } else {
           // No HLS support at all, try direct stream
-          console.log("No HLS support, trying direct stream...");
           const directStream = await getPipedDirectStream(videoId);
           if (directStream) {
             htmlPlayer.src = directStream;
@@ -518,61 +516,6 @@ function getPlayerState() {
   return player ? player.getPlayerState() : null;
 }
 
-// --- Ad detection (YouTube only — HTML5 player has no ads) ---
-
-function isAdPlaying() {
-  if (activePlayer === "html") return false; // No ads in Piped stream
-  if (!player || !loadedVideoId) return false;
-  try {
-    // Method 1: Check video_id mismatch (classic approach)
-    const data = player.getVideoData();
-    if (data && data.video_id && data.video_id !== loadedVideoId) {
-      return true;
-    }
-
-    // Method 2: Check if the player's URL contains ad indicators
-    const url = player.getVideoUrl?.() || "";
-    if (url.includes("&ad_") || url.includes("ad_type")) {
-      return true;
-    }
-
-    // Method 3: Check for very short duration (ads are typically < 60s, videos are longer)
-    // Only apply when we know the real video should be longer
-    const duration = player.getDuration();
-    const state = player.getPlayerState();
-    if (state === 1 && duration > 0 && duration < 45 && data?.title !== undefined) {
-      // If video just loaded and duration is suspiciously short, likely an ad
-      // But only if we haven't started playing the real content yet
-      const currentTime = player.getCurrentTime();
-      if (currentTime < 3) {
-        return true;
-      }
-    }
-
-    // Method 4: Check the iframe DOM for ad indicators via class names
-    const iframe = document.querySelector("#youtube-player iframe");
-    if (iframe) {
-      try {
-        const src = iframe.src || "";
-        if (src.includes("ad_") || src.includes("adurl")) return true;
-      } catch {}
-    }
-
-    // Method 5: Check playerInfo for ad state (undocumented but used by ad blockers)
-    if (player.getAdState && typeof player.getAdState === "function") {
-      const adState = player.getAdState();
-      if (adState === 1) return true;
-    }
-
-    // Method 6: Check if getVideoData returns isAd or similar field
-    if (data && (data.isAd || data.is_ad)) return true;
-
-    return false;
-  } catch {
-    return false;
-  }
-}
-
 function isUsingHtmlPlayer() {
   return activePlayer === "html";
 }
@@ -600,24 +543,6 @@ function isPlayerMuted() {
   return player ? player.isMuted() : false;
 }
 
-// --- Ad speed-up: fast-forward through ads ---
-
-function setPlaybackRate(rate) {
-  if (player) {
-    try { player.setPlaybackRate(rate); } catch {}
-  }
-}
-
-function seekToEnd() {
-  // Try to skip ad by seeking to end of current ad
-  if (player) {
-    try {
-      const duration = player.getDuration();
-      if (duration > 0) player.seekTo(duration, true);
-    } catch {}
-  }
-}
-
 export {
   searchKaraoke,
   extractVideoId,
@@ -630,11 +555,8 @@ export {
   getPlayerTime,
   getPlayerDuration,
   getPlayerState,
-  isAdPlaying,
   isUsingHtmlPlayer,
   mutePlayer,
   unmutePlayer,
-  isPlayerMuted,
-  setPlaybackRate,
-  seekToEnd
+  isPlayerMuted
 };
