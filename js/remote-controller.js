@@ -6,6 +6,8 @@ let currentUser = null;
 let queue = [];
 let unsubscribeQueue = null;
 let searchTimeout = null;
+let lastSearchResults = [];
+let addingToQueue = new Set();
 
 // DOM references
 let elements = {};
@@ -20,6 +22,8 @@ function initRemoteController(sessionCode, user, domElements) {
     queue = songs;
     renderQueue();
     renderNowPlaying();
+    // Re-render search results to update queued badges
+    if (lastSearchResults.length) renderSearchResults(lastSearchResults);
   });
 
   // Search input with debounce
@@ -84,6 +88,7 @@ async function handleSearch(queryText) {
 
 function renderSearchResults(results) {
   if (!elements.searchResults) return;
+  lastSearchResults = results;
 
   if (!results.length) {
     elements.searchResults.innerHTML = `
@@ -92,26 +97,45 @@ function renderSearchResults(results) {
     return;
   }
 
+  // Build a set of videoIds that are currently queued or playing
+  const queuedVideoIds = new Set(
+    queue.filter((s) => s.status === "queued" || s.status === "playing").map((s) => s.videoId)
+  );
+
   elements.searchResults.innerHTML = results
-    .map(
-      (result) => `
-      <div class="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
-        <img src="${escapeHtml(result.thumbnailUrl)}" alt="" class="w-20 h-14 object-cover rounded flex-shrink-0">
-        <div class="flex-1 min-w-0">
-          <p class="text-white text-sm leading-tight line-clamp-2">${escapeHtml(result.title)}</p>
-          <p class="text-gray-400 text-xs mt-1">${escapeHtml(result.channelTitle)}</p>
+    .map((result) => {
+      const isQueued = queuedVideoIds.has(result.videoId);
+      const isAdding = addingToQueue.has(result.videoId);
+
+      const button = isQueued
+        ? `<span class="flex-shrink-0 bg-gray-700 text-gray-400 px-3 py-2 rounded-lg text-sm font-medium">Queued</span>`
+        : isAdding
+          ? `<span class="flex-shrink-0 bg-gray-700 text-gray-400 px-3 py-2 rounded-lg text-sm font-medium">Adding...</span>`
+          : `<button onclick="window.remoteAddToQueue('${result.videoId}', '${escapeAttr(result.title)}', '${escapeAttr(result.thumbnailUrl)}')"
+              class="flex-shrink-0 bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+              + Queue
+            </button>`;
+
+      return `
+        <div class="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
+          <img src="${escapeHtml(result.thumbnailUrl)}" alt="" class="w-20 h-14 object-cover rounded flex-shrink-0">
+          <div class="flex-1 min-w-0">
+            <p class="text-white text-sm leading-tight line-clamp-2">${escapeHtml(result.title)}</p>
+            <p class="text-gray-400 text-xs mt-1">${escapeHtml(result.channelTitle)}</p>
+          </div>
+          ${button}
         </div>
-        <button onclick="window.remoteAddToQueue('${result.videoId}', '${escapeAttr(result.title)}', '${escapeAttr(result.thumbnailUrl)}')"
-          class="flex-shrink-0 bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-          + Queue
-        </button>
-      </div>
-    `
-    )
+      `;
+    })
     .join("");
 }
 
 async function handleAddToQueue(videoId, title, thumbnailUrl) {
+  // Prevent double-click / rapid taps
+  if (addingToQueue.has(videoId)) return;
+  addingToQueue.add(videoId);
+  if (lastSearchResults.length) renderSearchResults(lastSearchResults);
+
   try {
     await addToQueue(currentSessionCode, {
       videoId,
@@ -123,7 +147,10 @@ async function handleAddToQueue(videoId, title, thumbnailUrl) {
 
     showToast("Song added to queue!");
   } catch (error) {
-    showToast("Failed to add song: " + error.message, true);
+    showToast(error.message, true);
+  } finally {
+    addingToQueue.delete(videoId);
+    if (lastSearchResults.length) renderSearchResults(lastSearchResults);
   }
 }
 

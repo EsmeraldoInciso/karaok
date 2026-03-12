@@ -68,6 +68,17 @@ function onParticipantsChanged(sessionCode, callback) {
 async function addToQueue(sessionCode, songData) {
   const queueRef = collection(db, "sessions", sessionCode, "queue");
 
+  // Check for duplicate — same videoId that is still queued or playing
+  const dupeQuery = query(
+    queueRef,
+    where("videoId", "==", songData.videoId),
+    where("status", "in", ["queued", "playing"])
+  );
+  const dupeSnap = await getDocs(dupeQuery);
+  if (!dupeSnap.empty) {
+    throw new Error("This song is already in the queue");
+  }
+
   // Get current max order
   const q = query(queueRef, orderBy("order", "desc"));
   const snap = await getDocs(q);
