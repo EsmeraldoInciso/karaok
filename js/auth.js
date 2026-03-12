@@ -10,7 +10,8 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
   getFirestore,
@@ -65,6 +66,11 @@ async function logOut() {
   await signOut(auth);
 }
 
+// Send password reset email
+async function resetPassword(email) {
+  await sendPasswordResetEmail(auth, email);
+}
+
 // Get current user (returns a promise)
 function getCurrentUser() {
   return new Promise((resolve) => {
@@ -111,6 +117,7 @@ export {
   signInWithEmail,
   signUpWithEmail,
   logOut,
+  resetPassword,
   getCurrentUser,
   requireAuth,
   redirectIfAuth,
