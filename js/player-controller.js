@@ -1,4 +1,4 @@
-import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState, isAdPlaying, mutePlayer, unmutePlayer } from "./youtube-api.js";
+import { initYouTubePlayer, loadVideo, stopVideo, togglePlayPause, getPlayerTime, getPlayerDuration, getPlayerState, isAdPlaying, isUsingHtmlPlayer, mutePlayer, unmutePlayer } from "./youtube-api.js";
 import {
   updateQueueItemStatus,
   removeQueueItem,
@@ -151,6 +151,8 @@ function stopEndScreenMonitor() {
 
 function startAdMonitor() {
   stopAdMonitor();
+  // No ads when using Piped HTML5 player
+  if (isUsingHtmlPlayer()) return;
   adCheckTimer = setInterval(() => {
     const adPlaying = isAdPlaying();
     const adOverlay = document.getElementById("ad-overlay");

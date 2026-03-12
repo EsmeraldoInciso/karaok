@@ -206,11 +206,55 @@ async function getVideoById(videoId) {
   return ytResult;
 }
 
-// YouTube IFrame Player wrapper
-let player = null;
+// --- Dual Player: HTML5 (Piped, ad-free) + YouTube IFrame (fallback) ---
+
+let player = null; // YouTube IFrame player
 let playerReadyPromise = null;
+let htmlPlayer = null; // HTML5 <video> element
+let activePlayer = "none"; // "html" | "youtube" | "none"
+let loadedVideoId = null;
+let htmlPlayerState = -1; // Tracks state using YT state codes
+
+// Callbacks stored during init
+let stateChangeCallback = null;
+let errorCallback = null;
 
 function initYouTubePlayer(elementId, onStateChange, onError) {
+  stateChangeCallback = onStateChange;
+  errorCallback = onError;
+
+  // Init HTML5 player
+  htmlPlayer = document.getElementById("html-player");
+  if (htmlPlayer) {
+    htmlPlayer.addEventListener("playing", () => {
+      htmlPlayerState = 1; // PLAYING
+      if (stateChangeCallback) stateChangeCallback({ data: 1 });
+    });
+    htmlPlayer.addEventListener("pause", () => {
+      if (htmlPlayer.ended) return; // Let 'ended' handle this
+      htmlPlayerState = 2; // PAUSED
+      if (stateChangeCallback) stateChangeCallback({ data: 2 });
+    });
+    htmlPlayer.addEventListener("ended", () => {
+      htmlPlayerState = 0; // ENDED
+      if (stateChangeCallback) stateChangeCallback({ data: 0 });
+    });
+    htmlPlayer.addEventListener("waiting", () => {
+      htmlPlayerState = 3; // BUFFERING
+      if (stateChangeCallback) stateChangeCallback({ data: 3 });
+    });
+    htmlPlayer.addEventListener("error", () => {
+      console.warn("HTML5 player error, falling back to YouTube");
+      if (activePlayer === "html" && loadedVideoId) {
+        // Fallback to YouTube iframe
+        fallbackToYouTube(loadedVideoId);
+      } else if (errorCallback) {
+        errorCallback({ data: 2 });
+      }
+    });
+  }
+
+  // Init YouTube IFrame player
   playerReadyPromise = new Promise((resolve) => {
     window.onYouTubeIframeAPIReady = () => {
       player = new YT.Player(elementId, {
@@ -218,33 +262,31 @@ function initYouTubePlayer(elementId, onStateChange, onError) {
         width: "100%",
         playerVars: {
           autoplay: 1,
-          controls: 0,  // Hide YouTube controls (we have our own overlay)
+          controls: 0,
           rel: 0,
           modestbranding: 1,
-          fs: 0,         // Disable native fullscreen (we use our own)
-          iv_load_policy: 3,  // Hide annotations
-          disablekb: 0   // Keep keyboard shortcuts (space = play/pause)
+          fs: 0,
+          iv_load_policy: 3,
+          disablekb: 0
         },
         events: {
           onReady: () => resolve(player),
           onStateChange: (event) => {
-            if (onStateChange) onStateChange(event);
+            if (activePlayer === "youtube" && stateChangeCallback) stateChangeCallback(event);
           },
           onError: (event) => {
             console.warn("YouTube player error:", event.data);
-            if (onError) onError(event);
+            if (activePlayer === "youtube" && errorCallback) errorCallback(event);
           }
         }
       });
     };
 
-    // Load the YouTube IFrame API script if not already loaded
     if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
       document.head.appendChild(tag);
     } else if (window.YT && window.YT.Player) {
-      // API already loaded, call ready handler directly
       window.onYouTubeIframeAPIReady();
     }
   });
@@ -252,59 +294,203 @@ function initYouTubePlayer(elementId, onStateChange, onError) {
   return playerReadyPromise;
 }
 
+// --- Piped stream URL fetching ---
+
+async function getPipedStreamUrl(videoId) {
+  try {
+    const response = await fetch(`${PIPED_PROXY_URL}/streams/${videoId}`, {
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    if (data.error) return null;
+
+    // Prefer HLS stream (adaptive, has audio+video)
+    if (data.hls) return { url: data.hls, type: "hls" };
+
+    // Fallback: find a video stream that includes audio (videoOnly === false)
+    const combinedStreams = (data.videoStreams || [])
+      .filter((s) => !s.videoOnly && s.url)
+      .sort((a, b) => {
+        // Prefer higher quality but cap at 720p for performance
+        const aRes = parseInt(a.quality) || 0;
+        const bRes = parseInt(b.quality) || 0;
+        const aScore = aRes <= 720 ? aRes : 720 - (aRes - 720);
+        const bScore = bRes <= 720 ? bRes : 720 - (bRes - 720);
+        return bScore - aScore;
+      });
+
+    if (combinedStreams.length > 0) {
+      return { url: combinedStreams[0].url, type: "direct" };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// --- Player visibility switching ---
+
+function showHtmlPlayer() {
+  if (htmlPlayer) htmlPlayer.classList.remove("hidden");
+  const ytEl = document.getElementById("youtube-player");
+  if (ytEl) ytEl.style.display = "none";
+  const shield = document.getElementById("iframe-shield");
+  if (shield) shield.style.display = "none";
+}
+
+function showYouTubePlayer() {
+  if (htmlPlayer) {
+    htmlPlayer.classList.add("hidden");
+    htmlPlayer.pause();
+    htmlPlayer.removeAttribute("src");
+    htmlPlayer.load();
+  }
+  const ytEl = document.getElementById("youtube-player");
+  if (ytEl) ytEl.style.display = "";
+  const shield = document.getElementById("iframe-shield");
+  if (shield) shield.style.display = "";
+}
+
+// --- Load video: Piped first, YouTube fallback ---
+
 async function loadVideo(videoId) {
+  loadedVideoId = videoId;
+
+  // Try Piped stream first (ad-free)
+  const stream = await getPipedStreamUrl(videoId);
+
+  if (stream && htmlPlayer) {
+    try {
+      activePlayer = "html";
+      showHtmlPlayer();
+
+      if (stream.type === "hls" && htmlPlayer.canPlayType("application/vnd.apple.mpegurl")) {
+        // Native HLS support (Safari)
+        htmlPlayer.src = stream.url;
+      } else if (stream.type === "hls") {
+        // Non-Safari: HLS not natively supported, use direct stream or fallback
+        console.log("HLS not supported natively, trying direct stream...");
+        const directStream = await getPipedDirectStream(videoId);
+        if (directStream) {
+          htmlPlayer.src = directStream;
+        } else {
+          throw new Error("No playable stream");
+        }
+      } else {
+        htmlPlayer.src = stream.url;
+      }
+
+      htmlPlayer.load();
+      await htmlPlayer.play();
+      console.log("Playing via Piped (ad-free)");
+      return;
+    } catch (err) {
+      console.warn("Piped playback failed:", err.message);
+    }
+  }
+
+  // Fallback to YouTube IFrame
+  await fallbackToYouTube(videoId);
+}
+
+async function getPipedDirectStream(videoId) {
+  try {
+    const response = await fetch(`${PIPED_PROXY_URL}/streams/${videoId}`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+
+    const streams = (data.videoStreams || [])
+      .filter((s) => !s.videoOnly && s.url)
+      .sort((a, b) => {
+        const aRes = parseInt(a.quality) || 0;
+        const bRes = parseInt(b.quality) || 0;
+        const aScore = aRes <= 720 ? aRes : 720 - (aRes - 720);
+        const bScore = bRes <= 720 ? bRes : 720 - (bRes - 720);
+        return bScore - aScore;
+      });
+
+    return streams.length > 0 ? streams[0].url : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fallbackToYouTube(videoId) {
+  activePlayer = "youtube";
+  showYouTubePlayer();
+
   if (!player) {
     await playerReadyPromise;
   }
-  loadedVideoId = videoId;
+
+  console.log("Playing via YouTube IFrame (fallback)");
   player.loadVideoById(videoId);
 }
 
+// --- Unified player controls ---
+
 async function stopVideo() {
-  if (player) {
+  if (activePlayer === "html" && htmlPlayer) {
+    htmlPlayer.pause();
+    htmlPlayer.removeAttribute("src");
+    htmlPlayer.load();
+  } else if (player) {
     player.stopVideo();
   }
+  activePlayer = "none";
 }
 
 function togglePlayPause() {
-  if (!player) return;
-  const state = player.getPlayerState();
-  // 1 = playing, 2 = paused
-  if (state === 1) {
-    player.pauseVideo();
-  } else {
-    player.playVideo();
+  if (activePlayer === "html" && htmlPlayer) {
+    if (htmlPlayer.paused) {
+      htmlPlayer.play();
+    } else {
+      htmlPlayer.pause();
+    }
+  } else if (player) {
+    const state = player.getPlayerState();
+    if (state === 1) {
+      player.pauseVideo();
+    } else {
+      player.playVideo();
+    }
   }
 }
 
 function getPlayerTime() {
+  if (activePlayer === "html" && htmlPlayer) {
+    return htmlPlayer.currentTime || 0;
+  }
   return player ? player.getCurrentTime() : 0;
 }
 
 function getPlayerDuration() {
+  if (activePlayer === "html" && htmlPlayer) {
+    return htmlPlayer.duration || 0;
+  }
   return player ? player.getDuration() : 0;
 }
 
 function getPlayerState() {
+  if (activePlayer === "html") {
+    return htmlPlayerState;
+  }
   return player ? player.getPlayerState() : null;
 }
 
-// Ad detection: check if the current video URL differs from what we loaded
-let loadedVideoId = null;
-
-function setLoadedVideoId(id) {
-  loadedVideoId = id;
-}
+// --- Ad detection (YouTube only — HTML5 player has no ads) ---
 
 function isAdPlaying() {
+  if (activePlayer === "html") return false; // No ads in Piped stream
   if (!player || !loadedVideoId) return false;
   try {
-    const url = player.getVideoUrl();
-    if (!url) return false;
-    // During ads, getVideoUrl() still returns the main video URL on some players,
-    // but getVideoData() may have ad info. Check multiple signals:
     const data = player.getVideoData();
-    // If video_id from player doesn't match what we loaded, likely an ad
     if (data && data.video_id && data.video_id !== loadedVideoId) return true;
     return false;
   } catch {
@@ -312,15 +498,30 @@ function isAdPlaying() {
   }
 }
 
+function isUsingHtmlPlayer() {
+  return activePlayer === "html";
+}
+
 function mutePlayer() {
-  if (player) player.mute();
+  if (activePlayer === "html" && htmlPlayer) {
+    htmlPlayer.muted = true;
+  } else if (player) {
+    player.mute();
+  }
 }
 
 function unmutePlayer() {
-  if (player) player.unMute();
+  if (activePlayer === "html" && htmlPlayer) {
+    htmlPlayer.muted = false;
+  } else if (player) {
+    player.unMute();
+  }
 }
 
 function isPlayerMuted() {
+  if (activePlayer === "html" && htmlPlayer) {
+    return htmlPlayer.muted;
+  }
   return player ? player.isMuted() : false;
 }
 
@@ -337,6 +538,7 @@ export {
   getPlayerDuration,
   getPlayerState,
   isAdPlaying,
+  isUsingHtmlPlayer,
   mutePlayer,
   unmutePlayer,
   isPlayerMuted

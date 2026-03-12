@@ -96,7 +96,8 @@
 }
 
 /* In fullscreen, keep video at 16:9 centered (no cropping) */
-#player-container:fullscreen #youtube-player {
+#player-container:fullscreen #youtube-player,
+#player-container:fullscreen #html-player {
   position: relative;
   width: 100%;
   height: 100%;
@@ -104,6 +105,13 @@
   max-height: calc(100vw * 9 / 16);
   aspect-ratio: 16 / 9;
   border-radius: 0;
+}
+
+/* HTML5 player: match YouTube player styling */
+#html-player {
+  z-index: 1;
+  background: #000;
+  border-radius: 0.75rem;
 }
 
 /* In fullscreen: hide cursor when idle, show when overlay visible */
