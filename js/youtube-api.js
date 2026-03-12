@@ -211,6 +211,7 @@ async function getVideoById(videoId) {
 let player = null; // YouTube IFrame player
 let playerReadyPromise = null;
 let htmlPlayer = null; // HTML5 <video> element
+let hlsInstance = null; // HLS.js instance for non-Safari browsers
 let activePlayer = "none"; // "html" | "youtube" | "none"
 let loadedVideoId = null;
 let htmlPlayerState = -1; // Tracks state using YT state codes
@@ -343,6 +344,7 @@ function showHtmlPlayer() {
 }
 
 function showYouTubePlayer() {
+  destroyHls();
   if (htmlPlayer) {
     htmlPlayer.classList.add("hidden");
     htmlPlayer.pause();
@@ -357,8 +359,16 @@ function showYouTubePlayer() {
 
 // --- Load video: Piped first, YouTube fallback ---
 
+function destroyHls() {
+  if (hlsInstance) {
+    hlsInstance.destroy();
+    hlsInstance = null;
+  }
+}
+
 async function loadVideo(videoId) {
   loadedVideoId = videoId;
+  destroyHls();
 
   // Try Piped stream first (ad-free)
   const stream = await getPipedStreamUrl(videoId);
@@ -368,19 +378,40 @@ async function loadVideo(videoId) {
       activePlayer = "html";
       showHtmlPlayer();
 
-      if (stream.type === "hls" && htmlPlayer.canPlayType("application/vnd.apple.mpegurl")) {
-        // Native HLS support (Safari)
-        htmlPlayer.src = stream.url;
-      } else if (stream.type === "hls") {
-        // Non-Safari: HLS not natively supported, use direct stream or fallback
-        console.log("HLS not supported natively, trying direct stream...");
-        const directStream = await getPipedDirectStream(videoId);
-        if (directStream) {
-          htmlPlayer.src = directStream;
+      if (stream.type === "hls") {
+        if (htmlPlayer.canPlayType("application/vnd.apple.mpegurl")) {
+          // Native HLS support (Safari)
+          htmlPlayer.src = stream.url;
+        } else if (typeof Hls !== "undefined" && Hls.isSupported()) {
+          // Use HLS.js for Chrome, Firefox, Edge, etc.
+          hlsInstance = new Hls({
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            startLevel: -1 // auto quality
+          });
+          hlsInstance.loadSource(stream.url);
+          hlsInstance.attachMedia(htmlPlayer);
+
+          await new Promise((resolve, reject) => {
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => resolve());
+            hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+              if (data.fatal) reject(new Error(`HLS error: ${data.type}`));
+            });
+            // Timeout after 10 seconds
+            setTimeout(() => reject(new Error("HLS manifest timeout")), 10000);
+          });
         } else {
-          throw new Error("No playable stream");
+          // No HLS support at all, try direct stream
+          console.log("No HLS support, trying direct stream...");
+          const directStream = await getPipedDirectStream(videoId);
+          if (directStream) {
+            htmlPlayer.src = directStream;
+          } else {
+            throw new Error("No playable stream");
+          }
         }
       } else {
+        // Direct (non-HLS) stream
         htmlPlayer.src = stream.url;
       }
 
@@ -390,6 +421,7 @@ async function loadVideo(videoId) {
       return;
     } catch (err) {
       console.warn("Piped playback failed:", err.message);
+      destroyHls();
     }
   }
 
@@ -437,6 +469,7 @@ async function fallbackToYouTube(videoId) {
 
 async function stopVideo() {
   if (activePlayer === "html" && htmlPlayer) {
+    destroyHls();
     htmlPlayer.pause();
     htmlPlayer.removeAttribute("src");
     htmlPlayer.load();
